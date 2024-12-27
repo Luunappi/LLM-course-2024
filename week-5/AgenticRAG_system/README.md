@@ -88,6 +88,7 @@ pip install -r requirements.txt
 3. Käynnistä Streamlit UI:
 
 bash
+cd week-5/AgenticRAG_system
 streamlit run AgenticRAG_UI.py
 
 bash
@@ -216,4 +217,22 @@ Tämä dokumentaatio auttaa kehittäjiä ymmärtämään:
 streamlit (käyttöliittymä)
 torch (koneoppimismallit)
 ...
+## embedding model
 
+all-mpnet-base-v2 
+
+on hyvä yleiskäyttöinen embedding-malli, joka toimii hyvin kaikkien LLM-vaihtoehtojen kanssa. Tässä syyt:
+
+1. Mallin ominaisuudet:
+- all-mpnet-base-v2 on yksi parhaista yleiskäyttöisistä embedding-malleista
+- Se tuottaa 768-dimensioisia vektoreita, jotka ovat yhteensopivia kaikkien LLM:ien kanssa
+- Malli on optimoitu semantic search -käyttöön, mikä sopii hyvin RAG-sovelluksiin
+
+2. Yhteensopivuus:
+- Toimii lokaalien mallien kanssa (Gemma, Mistral)
+- Toimii OpenAI:n mallien kanssa (O1-mini, O1)
+- Toimii Azure OpenAI:n mallien kanssa (GPT-4o)
+
+3. Suorituskyky:
+- MTEB-benchmarkissa yksi parhaiten suoriutuvista malleista
+- Hyvä tasapaino nopeuden ja laadun välillä

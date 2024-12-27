@@ -1,8 +1,8 @@
 # OrchestratorAgent vastaa työnkulun koordinoinnista
 from typing import List, Dict, Any
+from messaging.pubsub import PubSubSystem
 from .text_agent import TextAgent
 from .image_agent import ImageAgent
-from ..messaging.pubsub import PubSubSystem
 
 
 class OrchestratorAgent:

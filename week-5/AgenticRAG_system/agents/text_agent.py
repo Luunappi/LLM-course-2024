@@ -2,40 +2,69 @@ import torch
 import pandas as pd
 from util.vector_search_utils import retrieve_relevant_resources
 from util.generator_utils import tokenize_with_rag_prompt, generate_answer
+from typing import List, Dict
 
 
 class TextAgent:
     """
-    Agentti tekstiaineiston RAG-hakuun.
+    Agentti tekstin käsittelyyn ja vastausten generointiin.
     """
 
-    def __init__(self, embedding_model, llm_model, tokenizer, device="cpu", top_k=5):
+    def __init__(
+        self,
+        embedding_model,
+        llm_model,
+        tokenizer,
+        device="mps",
+        top_k=5,
+        model_type=None,
+    ):
         self.embedding_model = embedding_model
         self.llm_model = llm_model
         self.tokenizer = tokenizer
         self.device = device
         self.top_k = top_k
+        self.model_type = model_type
 
-    def run_rag_search_and_answer(
-        self, query: str, df: pd.DataFrame, embeddings_tensor, max_new_tokens=512
-    ) -> str:
+    def get_relevant_documents(
+        self, query: str, df: pd.DataFrame, embeddings: torch.Tensor
+    ) -> List[Dict]:
         """
-        Etsi relevantit chunkit ja generoi vastaus.
+        Hakee relevantit dokumentit kyselyyn.
         """
-        # 1) hae top_k chunkkeja
-        scores, indices = retrieve_relevant_resources(
-            query=query,
-            embeddings=embeddings_tensor,
-            model=self.embedding_model,
+        # Laske kyselyn embeddings
+        query_embedding = self.embedding_model.encode(query)
+        query_tensor = torch.tensor(query_embedding).unsqueeze(0)
+
+        # Laske samankaltaisuudet
+        similarities = torch.nn.functional.cosine_similarity(query_tensor, embeddings)
+
+        # Hae top-k indeksit
+        top_k_indices = torch.topk(similarities, k=self.top_k).indices
+
+        # Palauta relevantit dokumentit
+        relevant_docs = []
+        for idx in top_k_indices:
+            relevant_docs.append(df.iloc[idx].to_dict())
+
+        return relevant_docs
+
+    def generate_answer(self, query: str, relevant_docs: List[Dict]) -> str:
+        """
+        Generoi vastaus relevanttien dokumenttien perusteella.
+        """
+        # Tokenisoi syöte RAG-promptilla
+        input_ids = tokenize_with_rag_prompt(query, relevant_docs, self.tokenizer)
+
+        # Generoi vastaus
+        answer, _ = generate_answer(
+            input_ids=input_ids,
+            model=self.llm_model,
+            tokenizer=self.tokenizer,
+            model_type=self.model_type,
+            max_new_tokens=512,
         )
-        context_items = []
-        for idx, score in zip(indices, scores):
-            row = df.iloc[idx].to_dict()
-            context_items.append(row)
 
-        # 2) rakenna RAG-prompt
-        input_ids = tokenize_with_rag_prompt(query, context_items, self.tokenizer)
-        answer, gen_time = generate_answer(input_ids, self.llm_model, self.tokenizer)
         return answer
 
     def summarize_entire_text(self, df: pd.DataFrame) -> str:
