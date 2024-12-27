@@ -1,25 +1,44 @@
 from pypdf import PdfReader
-from PIL import Image
-import io
+from typing import List, Dict
+import logging
 
 
-def open_and_read_pdf(file):
+def open_and_read_pdf(pdf_file) -> List[Dict]:
     """
-    Lukee PDF:n ja palauttaa tekstin ja kuvat sivuittain.
+    Lukee PDF-tiedoston ja palauttaa tekstin ja kuvat sivuittain.
     """
-    reader = PdfReader(file)
-    pages = []
+    try:
+        reader = PdfReader(pdf_file)
+        pages_data = []
 
-    for page_num, page in enumerate(reader.pages, 1):
-        page_data = {"page_num": page_num, "text": page.extract_text()}
+        for page_num, page in enumerate(reader.pages, 1):
+            try:
+                # Yritä lukea teksti turvallisemmin
+                text = ""
+                try:
+                    text = page.extract_text()
+                except Exception as text_error:
+                    logging.warning(
+                        f"Virhe tekstin lukemisessa sivulta {page_num}: {text_error}"
+                    )
 
-        # Extract images if any
-        if page.images:
-            page_data["images"] = []
-            for image in page.images:
-                img = Image.open(io.BytesIO(image.data))
-                page_data["images"].append(img)
+                # Kerää sivun data
+                page_data = {
+                    "page_num": page_num,
+                    "text": text if text else "",
+                }
 
-        pages.append(page_data)
+                # Lisää sivu dataan
+                pages_data.append(page_data)
 
-    return pages
+            except Exception as page_error:
+                logging.error(f"Virhe sivun {page_num} käsittelyssä: {page_error}")
+                # Lisää tyhjä sivu ja jatka
+                pages_data.append({"page_num": page_num, "text": ""})
+                continue
+
+        return pages_data
+
+    except Exception as e:
+        logging.error(f"Virhe PDF:n lukemisessa: {e}")
+        raise RuntimeError(f"PDF-tiedoston lukeminen epäonnistui: {str(e)}")
