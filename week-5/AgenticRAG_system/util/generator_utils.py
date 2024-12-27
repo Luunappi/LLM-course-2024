@@ -22,6 +22,19 @@ class ModelType:
     O1_PREVIEW = "O1-preview (Azure)"
 
 
+class TokenPricing:
+    """Token hinnoittelu eri malleille"""
+
+    GPT4O = {
+        "input": 2.50 / 1_000_000,  # $2.50 per 1M input tokens
+        "output": 10.00 / 1_000_000,  # $10.00 per 1M output tokens
+    }
+    O1_PREVIEW = {
+        "input": 0.50 / 1_000_000,  # Esimerkki hinta
+        "output": 2.00 / 1_000_000,
+    }
+
+
 def tokenize_with_rag_prompt(
     query: str, context_items: List[Dict], tokenizer
 ) -> torch.Tensor:
@@ -53,15 +66,14 @@ Answer:"""
     return tokenizer(prompt, return_tensors="pt")["input_ids"]
 
 
-def generate_with_openai(prompt: str, model_type: str) -> str:
-    """Generoi vastaus OpenAI:n mallilla."""
-    # Varmista että .env on ladattu
+def generate_with_openai(prompt: str, model_type: str) -> Tuple[str, int, int]:
+    """Generoi vastaus OpenAI:n mallilla ja palauttaa tokenimäärät."""
     load_dotenv()
 
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         st.error("OPENAI_API_KEY puuttuu .env tiedostosta")
-        return "API-avain puuttuu"
+        return "API-avain puuttuu", 0, 0
 
     client = OpenAI(api_key=api_key)
 
@@ -72,21 +84,25 @@ def generate_with_openai(prompt: str, model_type: str) -> str:
         model = "o1-2024-12-17"
     else:
         st.error(f"Tuntematon OpenAI malli: {model_type}")
-        return "Tuntematon malli"
+        return "Tuntematon malli", 0, 0
 
     try:
         response = client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": prompt}],
         )
-        return response.choices[0].message.content
+        return (
+            response.choices[0].message.content,
+            response.usage.prompt_tokens,
+            response.usage.completion_tokens,
+        )
     except Exception as e:
         st.error(f"OpenAI API virhe: {str(e)}")
-        return "Virhe OpenAI API:n käytössä"
+        return "Virhe OpenAI API:n käytössä", 0, 0
 
 
-def generate_with_azure(prompt: str, model_type: str) -> str:
-    """Generoi vastaus Azure OpenAI:n mallilla."""
+def generate_with_azure(prompt: str, model_type: str) -> Tuple[str, int, int]:
+    """Generoi vastaus Azure OpenAI:n mallilla ja palauttaa tokenimäärät."""
     from openai import AzureOpenAI
 
     client = AzureOpenAI(
@@ -104,16 +120,19 @@ def generate_with_azure(prompt: str, model_type: str) -> str:
         params = {"temperature": 0.7}
     elif model_type == ModelType.O1_PREVIEW:
         deployment = "o1-preview"
-        params = {}  # O1-preview ei tue temperature-parametria
-    else:
-        raise ValueError(f"Tuntematon Azure malli: {model_type}")
+        params = {}
 
     response = client.chat.completions.create(
         model=deployment,
         messages=[{"role": "user", "content": prompt}],
-        **params,  # Käytä mallikohtaisia parametreja
+        **params,
     )
-    return response.choices[0].message.content
+
+    # Laske tokenimäärät
+    input_tokens = response.usage.prompt_tokens
+    output_tokens = response.usage.completion_tokens
+
+    return (response.choices[0].message.content, input_tokens, output_tokens)
 
 
 def generate_answer(
@@ -292,3 +311,18 @@ def load_tokenizer():
         )
         tokenizer.save_pretrained(local_path)
         return tokenizer
+
+
+def calculate_token_cost(
+    input_tokens: int, output_tokens: int, model_type: str
+) -> float:
+    """Laskee tokenien hinnan."""
+    if model_type in [ModelType.GPT4O, ModelType.GPT4O_REALTIME]:
+        pricing = TokenPricing.GPT4O
+    elif model_type == ModelType.O1_PREVIEW:
+        pricing = TokenPricing.O1_PREVIEW
+    else:
+        return 0.0  # Lokaalit mallit ilmaisia
+
+    cost = (input_tokens * pricing["input"]) + (output_tokens * pricing["output"])
+    return cost

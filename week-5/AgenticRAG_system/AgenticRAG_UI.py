@@ -23,6 +23,7 @@ from util.generator_utils import (
     ModelType,
     generate_with_openai,
     generate_with_azure,
+    calculate_token_cost,
 )
 
 
@@ -148,12 +149,46 @@ def main():
         if st.button("Ask Model"):
             progress_bar = st.progress(0)
             status_text = st.empty()
+            token_info = st.empty()  # Lisätty token infoa varten
 
             try:
                 with st.spinner("Model thinking..."):
                     if model_type in [ModelType.O1_MINI, ModelType.O1]:
                         status_text.text("Sending request to OpenAI API...")
-                        answer = generate_with_openai(query, model_type)
+                        answer, input_tokens, output_tokens = generate_with_openai(
+                            query, model_type
+                        )
+
+                        # Laske hinta
+                        cost = calculate_token_cost(
+                            input_tokens, output_tokens, model_type
+                        )
+
+                        # Päivitä progress
+                        progress_bar.progress(100)
+                        status_text.text("Done!")
+
+                        # Näytä vastaus ja token-tiedot
+                        col1, col2 = st.columns([3, 1])
+
+                        with col1:
+                            st.markdown(f"**Answer:** {answer}")
+
+                        with col2:
+                            st.markdown(
+                                f"""
+                                <div style='background-color: #2E2E2E; padding: 10px; border-radius: 5px; margin-top: 10px;'>
+                                <p style='color: #888888; font-size: 0.8em; margin: 0;'>
+                                Token usage:<br>
+                                Input: {input_tokens:,}<br>
+                                Output: {output_tokens:,}<br>
+                                Total: {input_tokens + output_tokens:,}<br>
+                                Cost: ${cost:.4f}
+                                </p>
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
+                            )
 
                     elif model_type in [
                         ModelType.GPT4O_REALTIME,
@@ -161,7 +196,40 @@ def main():
                         ModelType.O1_PREVIEW,
                     ]:
                         status_text.text("Sending request to Azure API...")
-                        answer = generate_with_azure(query, model_type)
+                        answer, input_tokens, output_tokens = generate_with_azure(
+                            query, model_type
+                        )
+
+                        # Laske hinta
+                        cost = calculate_token_cost(
+                            input_tokens, output_tokens, model_type
+                        )
+
+                        # Päivitä progress
+                        progress_bar.progress(100)
+                        status_text.text("Done!")
+
+                        # Näytä vastaus ja token-tiedot
+                        col1, col2 = st.columns([3, 1])
+
+                        with col1:
+                            st.markdown(f"**Answer:** {answer}")
+
+                        with col2:
+                            st.markdown(
+                                f"""
+                                <div style='background-color: #2E2E2E; padding: 10px; border-radius: 5px; margin-top: 10px;'>
+                                <p style='color: #888888; font-size: 0.8em; margin: 0;'>
+                                Token usage:<br>
+                                Input: {input_tokens:,}<br>
+                                Output: {output_tokens:,}<br>
+                                Total: {input_tokens + output_tokens:,}<br>
+                                Cost: ${cost:.4f}
+                                </p>
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
+                            )
 
                     elif model_type in [ModelType.LOCAL_GEMMA, ModelType.LOCAL_MISTRAL]:
                         # Lokaalit mallit
@@ -191,13 +259,20 @@ def main():
                             output_ids[0], skip_special_tokens=True
                         )
 
+                        progress_bar.progress(100)
+                        status_text.text("Done!")
+                        token_info.markdown(
+                            """
+                        <p style='color: gray; font-size: 0.8em;'>
+                        Local model - no token costs
+                        </p>
+                        """,
+                            unsafe_allow_html=True,
+                        )
+
                     else:
                         st.error(f"Unknown model type: {model_type}")
                         return
-
-                    progress_bar.progress(100)
-                    status_text.text("Done!")
-                    st.write(f"Answer: {answer}")
 
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
@@ -260,26 +335,33 @@ def main():
 
             # Embeddings
             embeddings = []
-            for i, row in df.iterrows():
-                text_chunk = row["sentence_chunk"]
-                emb = embedding_model.encode(text_chunk).tolist()
-                embeddings.append(emb)
-            embeddings_tensor = torch.tensor(embeddings, dtype=torch.float32)
+            if not df.empty:
+                for i, row in df.iterrows():
+                    text_chunk = row["sentence_chunk"]
+                    if text_chunk and isinstance(text_chunk, str):
+                        emb = embedding_model.encode(text_chunk).tolist()
+                        embeddings.append(emb)
 
-            st.success("Preprocessing complete!")
+                if embeddings:
+                    embeddings_tensor = torch.tensor(embeddings, dtype=torch.float32)
+                    st.success("Preprocessing complete!")
 
-            # Let the user ask a question
-            st.subheader("Agentic RAG Query")
-            query = st.text_input(
-                "Ask something about this PDF", "What is signal boosting?"
-            )
-            if st.button("Run Agentic RAG"):
-                with st.spinner("Agent reasoning..."):
-                    answer, gen_time = agent_rag.run_agentic_search(
-                        query, df, embeddings_tensor
+                    # Let the user ask a question
+                    st.subheader("Agentic RAG Query")
+                    query = st.text_input(
+                        "Ask something about this PDF", "What is Lossless Tokenization?"
                     )
-                st.write(f"Answer: {answer}")
-                st.write(f"Generation time: {gen_time:.2f}s")
+                    if st.button("Run Agentic RAG"):
+                        with st.spinner("Agent reasoning..."):
+                            answer, gen_time = agent_rag.run_agentic_search(
+                                query, df, embeddings_tensor
+                            )
+                        st.write(f"Answer: {answer}")
+                        st.write(f"Generation time: {gen_time:.2f}s")
+                else:
+                    st.error("Ei löydetty tekstiä embeddingiä varten")
+            else:
+                st.error("PDF on tyhjä")
 
             # Jos PDF:ssä on kuvia, analysoi ne
             for page in pages_and_texts:
