@@ -299,3 +299,4 @@ ENV/
 *.log
 
 .DS_Store
+command
