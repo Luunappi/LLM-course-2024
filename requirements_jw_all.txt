@@ -1,0 +1,64 @@
+# Core dependencies (Used across multiple weeks)
+requests>=2.31.0  # Week 2, 5
+numpy==1.26.4    # Week 5
+pandas==2.2.1    # Week 5
+matplotlib==3.8.3  # Week 5
+jupyter          # Week 5
+tqdm>=4.66.2     # Week 2, 5
+python-dotenv    # Week 2
+
+# LLM and ML
+# Week 2
+google-generativeai  # Used in gemini-chatbot and in-context-learning
+transformers>=4.38.2  # Used in prompting-notebook
+aisuite[all]       # Used for managing multiple LLM models
+ollama            # Used for running Llama models locally
+
+# Week 4 (Fine-tuning)
+peft
+datasets
+trl
+- xformers
+wandb
+einops
+bitsandbytes
+
+# Week 5 (RAG)
+sentence_transformers==2.5.1
+
+# Text processing
+# Week 2
+bs4                # Used in in-context-learning
+pypdf              # Used in in-context-learning
+spacy              # Week 5
+sentencepiece      # Week 2, 4
+stqdm              # Week 5
+
+# Web and API (Week 2 - gemini-chatbot)
+fastapi>=0.109.0
+python-multipart   # Required for Form handling in FastAPI
+jinja2            # Required for templating
+uvicorn>=0.29
+markdown2
+
+# PDF processing (Week 5)
+PyMuPDF==1.23.26
+
+# Optional dependencies
+#wheel             # Week 5 (optional)
+#flash-attn        # Week 5 (optional)
+
+# UI
+ipywidgets         # Week 2 (prompting-notebook)
+
+# Core ML libraries for Week 4 (DPO Fine-tuning)
+--extra-index-url https://download.pytorch.org/whl/nightly/cpu
+torch==2.2.0
+torchvision==0.17.0
+torchaudio==2.2.0
+
+# Utilities
+huggingface-hub>=0.19.0
+wandb>=0.15.11  # Training monitoring
+einops>=0.6.1   # Matrix operations
+sentencepiece>=0.1.99  # Tokenization
