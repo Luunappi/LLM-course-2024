@@ -1,63 +1,85 @@
 import torch
 from sentence_transformers import util, SentenceTransformer
 from time import perf_counter as timer
-
-# Define helper function to print wrapped text
 import textwrap
 
 def print_wrapped(text, wrap_length=80):
+    """Tulostaa tekstin rivitettynä"""
     wrapped_text = textwrap.fill(text, wrap_length)
     print(wrapped_text)
 
-def retrieve_relevant_resources(query: str,
-                                embeddings: torch.tensor,
-                                model: SentenceTransformer,
-                                st,
-                                n_resources_to_return: int=5,
-                                print_time: bool=True):
+def retrieve_relevant_resources(
+    query: str, 
+    embeddings: torch.Tensor, 
+    model: SentenceTransformer,
+    st,
+    n_results: int = 5
+) -> tuple[list[float], list[int]]:
+    """Hakee relevanteimmat tekstit vektoriavaruudesta
+    
+    Args:
+        query: Hakuteksti
+        embeddings: Dokumenttien embeddings-tensori
+        model: SentenceTransformer-malli
+        st: Streamlit-konteksti
+        n_results: Palautettavien tulosten määrä
+        
+    Returns:
+        tuple: (pisteet, indeksit)
     """
-    Embeds a query with model and returns top k scores and indices from embeddings.
-    """
-
-    # Embed the query
-    query_embedding = model.encode(query,
-                                   convert_to_tensor=True)
-
-    # Get dot product scores on embeddings
+    # Laske query embedding
     start_time = timer()
+    query_embedding = model.encode(query, convert_to_tensor=True)
+    
+    # Siirrä embeddings samalle laitteelle
+    device = query_embedding.device
+    embeddings = embeddings.to(device)
+    
+    # Laske pistetulot
     dot_scores = util.dot_score(query_embedding, embeddings)[0]
+    
+    # Siirrä tulokset CPU:lle ja järjestä
+    dot_scores = dot_scores.cpu()
+    scores_with_indices = [(score.item(), idx) for idx, score in enumerate(dot_scores)]
+    scores_with_indices.sort(key=lambda x: x[0], reverse=True)
+    
+    # Valitse top-n tulokset
+    scores = [score for score, _ in scores_with_indices[:n_results]]
+    indices = [idx for _, idx in scores_with_indices[:n_results]]
+    
+    # Näytä suoritusaika
     end_time = timer()
-
-    if print_time:
-        # print(f"[INFO] Time taken to get scores on {len(embeddings)} embeddings: {end_time-start_time:.5f} seconds.")
-        st.write(f"[INFO] Time taken to get scores on {len(embeddings)} embeddings: {end_time-start_time:.5f} seconds.")
-
-    scores, indices = torch.topk(input=dot_scores,
-                                 k=n_resources_to_return)
-
+    st.write(f"Search time: {end_time-start_time:.3f}s for {len(embeddings)} documents")
+    
     return scores, indices
 
-def print_top_results_and_scores(query: str,
-                                 embeddings: torch.tensor,
-                                 pages_and_chunks: list[dict],
-                                 n_resources_to_return: int=5):
+def print_top_results(
+    query: str,
+    embeddings: torch.Tensor,
+    chunks: list[dict],
+    model: SentenceTransformer,
+    n_results: int = 5
+) -> None:
+    """Tulostaa hakutulokset
+    
+    Args:
+        query: Hakuteksti
+        embeddings: Dokumenttien embeddings
+        chunks: Dokumenttien tekstit ja metatiedot
+        model: SentenceTransformer-malli
+        n_results: Tulostettavien tulosten määrä
     """
-    Takes a query, retrieves most relevant resources and prints them out in descending order.
+    scores, indices = retrieve_relevant_resources(
+        query=query,
+        embeddings=embeddings,
+        model=model,
+        st=None,
+        n_results=n_results
+    )
 
-    Note: Requires pages_and_chunks to be formatted in a specific way (see above for reference).
-    """
-
-    scores, indices = retrieve_relevant_resources(query=query,
-                                                  embeddings=embeddings,
-                                                  n_resources_to_return=n_resources_to_return)
-
-    print(f"Query: {query}\n")
+    print(f"\nQuery: {query}\n")
     print("Results:")
-    # Loop through zipped together scores and indicies
-    for score, index in zip(scores, indices):
+    for score, idx in zip(scores, indices):
         print(f"Score: {score:.4f}")
-        # Print relevant sentence chunk (since the scores are in descending order, the most relevant chunk will be first)
-        print_wrapped(pages_and_chunks[index]["sentence_chunk"])
-        # Print the page number too so we can reference the textbook further and check the results
-        print(f"Page number: {pages_and_chunks[index]['page_number']}")
-        print("\n")
+        print_wrapped(chunks[idx]["sentence_chunk"])
+        print(f"Page: {chunks[idx]['page_number']}\n")

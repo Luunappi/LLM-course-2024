@@ -1,64 +1,98 @@
 from stqdm import stqdm
 import fitz
 import numpy as np
+from typing import List
+import PyPDF2
+from pathlib import Path
+
 
 def text_formatter(text: str) -> str:
     """Performs minor formatting on text."""
-    cleaned_text = text.replace("\n", " ").strip() # note: this might be different for each doc (best to experiment)
-
-    # Other potential text formatting functions can go here
+    cleaned_text = text.replace("\n", " ").strip()
     return cleaned_text
 
-# Open PDF and get lines/pages
-# Note: this only focuses on text, rather than images/figures etc
-def open_and_read_pdf(pdf_path: str) -> list[dict]:
+
+def open_and_read_pdf(pdf_path_or_file) -> list[dict]:
     """
     Opens a PDF file, reads its text content page by page, and collects statistics.
 
     Parameters:
-        pdf_path (str): The file path to the PDF document to be opened and read.
+        pdf_path_or_file: Either a file path string or a Streamlit UploadedFile object
 
     Returns:
-        list[dict]: A list of dictionaries, each containing the page number
-        (adjusted), character count, word count, sentence count, token count, and the extracted text
+        list[dict]: A list of dictionaries, each containing the page number,
+        character count, word count, sentence count, token count, and the extracted text
         for each page.
     """
-    doc = fitz.open(pdf_path)  # open a document
+    # Handle both file path strings and Streamlit uploaded files
+    if isinstance(pdf_path_or_file, str):
+        doc = fitz.open(pdf_path_or_file)
+    else:
+        # For Streamlit uploaded files
+        bytes_data = pdf_path_or_file.read()
+        doc = fitz.open(stream=bytes_data, filetype="pdf")
+
     pages_and_texts = []
-    for page_number, page in stqdm(enumerate(doc)):  # iterate the document pages
-        text = page.get_text()  # get plain text encoded as UTF-8
+    for page_number, page in stqdm(enumerate(doc)):
+        text = page.get_text()
         text = text_formatter(text)
-        pages_and_texts.append({
-                                #"page_number": page_number - 41,  # adjust page numbers since our PDF starts on page 42
-                                "page_number": page_number - 4,  # adjust page numbers since our PDF starts on page 42
-                                "page_char_count": len(text),
-                                "page_word_count": len(text.split(" ")),
-                                "page_sentence_count_raw": len(text.split(". ")),
-                                "page_token_count": len(text) / 4,  # 1 token = ~4 chars, see: https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
-                                "text": text})
+        pages_and_texts.append(
+            {
+                "page_number": page_number,
+                "page_char_count": len(text),
+                "page_word_count": len(text.split(" ")),
+                "page_sentence_count_raw": len(text.split(". ")),
+                "page_token_count": len(text) / 4,
+                "text": text,
+            }
+        )
+
+    doc.close()
     return pages_and_texts
 
-def load_page(filename:str, page_num: int, query: str):
+
+def load_page(filename: str, page_num: int, query: str):
     # Open PDF and load target page
     doc = fitz.open(filename)
-    # page = doc.load_page(5 + 41) # number of page (our doc starts page numbers on page 41)
-    page = doc.load_page(238 + 4)
+    page = doc.load_page(page_num)
 
     # Get the image of the page
     img = page.get_pixmap(dpi=300)
-
-    # Optional: save the image
-    # img.save("output_filename.png")
     doc.close()
 
     # Convert the Pixmap to a numpy array
-    img_array = np.frombuffer(img.samples_mv,
-                              dtype=np.uint8).reshape((img.h, img.w, img.n))
+    img_array = np.frombuffer(img.samples_mv, dtype=np.uint8).reshape(
+        (img.h, img.w, img.n)
+    )
 
     # Display the image using Matplotlib
     import matplotlib.pyplot as plt
+
     plt.figure(figsize=(13, 10))
     plt.imshow(img_array)
     plt.title(f"Query: '{query}' | Most relevant page:")
-    plt.axis('off')  # Turn off axis
+    plt.axis("off")
     plt.show()
+
+
+def pdf_to_text(pdf_file) -> List[str]:
+    """Muuntaa PDF-tiedoston tekstiksi sivu kerrallaan.
+
+    Args:
+        pdf_file: Ladattu PDF-tiedosto (streamlit UploadedFile)
+
+    Returns:
+        List[str]: Lista sivujen teksteistä
+    """
+    pages = []
+
+    # Lue PDF streamista
+    reader = PyPDF2.PdfReader(pdf_file)
+
+    # Käy läpi sivut
+    for page in reader.pages:
+        text = page.extract_text()
+        if text.strip():  # Lisää vain sivut joissa on tekstiä
+            pages.append(text)
+
+    return pages

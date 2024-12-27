@@ -1,31 +1,69 @@
 # Let's run Gemma on CPU, if GPU is not available
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
+import time
 
-def load_tokenizer(model_name:str = "google/gemma-2b-it"):
+
+def load_tokenizer(model_name: str = "google/gemma-2b-it"):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     return tokenizer
 
-def tokenize_with_chat(tokenizer, query):
-    chat = [
-        {"role": "user", "content": query},
-    ]
-    prompt = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
-    inputs = tokenizer.encode(prompt, add_special_tokens=False, return_tensors="pt") #tokenizer(prompt, return_tensors="pt")
 
-    return inputs, prompt
+def tokenize_with_chat(text: str, tokenizer) -> torch.Tensor:
+    """Tokenize chat input for Gemma model.
 
-def load_gemma(mobel_name:str = "google/gemma-2b-it"):
+    Args:
+        text: Input text
+        tokenizer: Tokenizer object
+
+    Returns:
+        torch.Tensor: Tokenized input
+    """
+    # Gemma ei tue system roolia, joten käytetään vain user viestiä
+    prompt = f"<start_of_turn>user\n{text}<end_of_turn>\n<start_of_turn>model"
+    return tokenizer(prompt, return_tensors="pt")["input_ids"]
+
+
+def load_gemma(mobel_name: str = "google/gemma-2b-it"):
     llm_model = AutoModelForCausalLM.from_pretrained(
-        mobel_name,
-        torch_dtype=torch.bfloat16
+        mobel_name, torch_dtype=torch.bfloat16
     )
     return llm_model
 
-def generate_answer(gemma_model, input_ids, tokenizer, prompt):
-    outputs = gemma_model.generate(input_ids, max_new_tokens=256)
-    outputs_decoded = tokenizer.decode(outputs[0])
-    return outputs_decoded.replace(prompt, '').replace('<bos>', '').replace('<eos>', '')
+
+def generate_answer(input_ids, model, tokenizer, max_new_tokens=512):
+    """Generoi vastaus ja palauta myös token määrät"""
+    start_time = time.time()
+
+    # Laske input tokenit
+    input_tokens = len(input_ids[0])
+
+    # Generoi vastaus
+    outputs = model.generate(
+        input_ids,
+        max_new_tokens=max_new_tokens,
+        do_sample=True,
+        temperature=0.7,
+        top_p=0.95,
+    )
+
+    # Laske output tokenit
+    output_tokens = len(outputs[0]) - input_tokens
+
+    # Dekoodaa vastaus
+    answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    gen_time = time.time() - start_time
+
+    return (
+        answer,
+        gen_time,
+        {
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": input_tokens + output_tokens,
+        },
+    )
+
 
 # rag
 def rag_prompt_formatter(tokenizer, query: str, context_items: list[dict]) -> str:
@@ -62,19 +100,33 @@ Answer:"""
     base_prompt = base_prompt.format(context=context, query=query)
 
     # Create prompt template for instruction-tuned model
-    dialogue_template = [
-        {"role": "user",
-        "content": base_prompt}
-    ]
+    dialogue_template = [{"role": "user", "content": base_prompt}]
 
     # Apply the chat template
-    prompt = tokenizer.apply_chat_template(conversation=dialogue_template,
-                                          tokenize=False,
-                                          add_generation_prompt=True)
+    prompt = tokenizer.apply_chat_template(
+        conversation=dialogue_template, tokenize=False, add_generation_prompt=True
+    )
     return prompt
 
-def tokenize_with_rag_prompt(tokenizer, query:str, context_items: list[dict]):
-    prompt = rag_prompt_formatter(tokenizer, query, context_items)
-    inputs = tokenizer.encode(prompt, add_special_tokens=False,
-                              return_tensors="pt")
-    return inputs, prompt
+
+def tokenize_with_rag_prompt(
+    query: str, context_items: list, tokenizer
+) -> torch.Tensor:
+    """Tokenize RAG prompt for Gemma model."""
+    # Muodosta konteksti
+    context_texts = [item["sentence_chunk"] for item in context_items]
+    context = "\n\nContext:\n• " + "\n• ".join(context_texts)
+
+    # Yksinkertaistettu prompt
+    prompt = (
+        f"<start_of_turn>user\n"
+        f"Answer the question based on the following context. "
+        f"If the context doesn't contain relevant information, say so clearly.\n"
+        f"{context}\n\n"
+        f"Question: {query}\n"
+        f"<end_of_turn>\n"
+        f"<start_of_turn>model\n"
+        f"Based on the provided context, I will answer your question about {query}:"
+    )
+
+    return tokenizer(prompt, return_tensors="pt")["input_ids"]

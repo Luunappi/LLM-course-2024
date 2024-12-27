@@ -1,37 +1,44 @@
-from stqdm import stqdm
-import pandas as pd
-import numpy as np
 import torch
+from stqdm import stqdm
 
-def embed_chunks(pages_and_chunks: list[dict], embedding_model):
-    # Embed each chunk one by one
-    for item in stqdm(pages_and_chunks):
-        item["embedding"] = embedding_model.encode(item["sentence_chunk"])
+def embed_chunks(df, model, batch_size=32):
+    """Embed text chunks using the given model.
+    
+    Args:
+        df: DataFrame containing text chunks
+        model: SentenceTransformer model
+        batch_size: Number of chunks to embed at once
+        
+    Returns:
+        list: List of embeddings
+    """
+    embeddings = []
+    chunks = df['sentence_chunk'].tolist()  # Get chunks as list
+    
+    # Process in batches
+    for i in stqdm(range(0, len(chunks), batch_size)):
+        batch = chunks[i:i + batch_size]
+        batch_embeddings = model.encode(batch)
+        embeddings.extend(batch_embeddings)
+    
+    return embeddings
 
-def save_embeddings(pages_and_chunks: list[dict]) -> str:
-    # Save embeddings to file
-    text_chunks_and_embeddings_df = pd.DataFrame(pages_and_chunks)
-    # TODO: change file name to be unique to avoid clashing with other files
-    embeddings_df_save_path = "text_chunks_and_embeddings_df.csv"
-    text_chunks_and_embeddings_df.to_csv(embeddings_df_save_path, index=False)
+def save_embeddings(embeddings, filename):
+    """Save embeddings to a file.
+    
+    Args:
+        embeddings: List of embeddings
+        filename: Path to save file
+    """
+    torch.save(embeddings, filename)
 
-    return embeddings_df_save_path
-
-# load embeddings into Tensor
-def embeddings_to_tensor(filename: str) -> tuple[torch.Tensor, dict]:
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    # Import texts and embedding df
-    text_chunks_and_embedding_df = pd.read_csv(filename)
-
-    # Convert embedding column back to np.array (it got converted to string when it got saved to CSV)
-    text_chunks_and_embedding_df["embedding"] = text_chunks_and_embedding_df["embedding"].apply(
-        lambda x: np.fromstring(x.strip("[]"), sep=" "))
-
-    ## Convert texts and embedding df to a list of dicts
-    #pages_and_chunks = text_chunks_and_embedding_df.to_dict(orient="records")
-
-    # Convert embeddings to torch tensor and send to device (note: NumPy arrays are float64, torch tensors are float32 by default)
-    embeddings = torch.tensor(np.array(text_chunks_and_embedding_df["embedding"].tolist()), dtype=torch.float32).to(device)
-
-    return embeddings, text_chunks_and_embedding_df.to_dict('records')
+def embeddings_to_tensor(embeddings):
+    """Convert embeddings to tensor.
+    
+    Args:
+        embeddings: List of embeddings
+        
+    Returns:
+        torch.Tensor: Tensor of embeddings
+    """
+    return torch.tensor(embeddings)

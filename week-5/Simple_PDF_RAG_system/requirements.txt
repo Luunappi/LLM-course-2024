@@ -1,0 +1,10 @@
+streamlit
+spacy
+sentence-transformers
+pandas
+torch
+transformers
+PyMuPDF>=1.21.1
+stqdm
+numpy
+matplotlib
