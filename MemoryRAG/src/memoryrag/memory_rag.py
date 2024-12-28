@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 import numpy as np
 from .storage import StorageManager
 from math import fabs
+import torch
 
 
 class MemoryRAG(MemoryOperations):
@@ -31,20 +32,39 @@ class MemoryRAG(MemoryOperations):
     """
 
     def __init__(self, model_name: str = "gpt-3.5-turbo"):
+        super().__init__()
+
+        # Storage
+        self.storage = StorageManager()
+
+        # Memory settings
+        self.max_age_days = 30
+        self.batch_size = 1000
+        self.min_chunk_size = 250
+        self.max_workers = 4
+        self.cleanup_interval = 24 * 60 * 60  # 24 hours
+        self.last_cleanup = time.time()
+
+        # Apple Silicon optimizations
+        self.use_mps = torch.backends.mps.is_available()
+        if self.use_mps:
+            print("Using Apple Silicon MPS acceleration")
+
+        # Initialize vectors and memory
+        self.pending_embeddings = []
+        self.pending_ids = []
+        self.embeddings_index = {}
+        self.index_loaded = False
+
+        # Initialize memory types
+        self.memory_types = {"core": [], "semantic": [], "episodic": [], "working": []}
+
         self.memory = AgenticMemory()
         self.pubsub = EnhancedPubSub()
         self.model_name = model_name
-        self.storage = StorageManager()
-        self.memory_types = self.storage.memories
 
-        # Alusta memory_manager ja context_manager
-        self.memory_manager = MemoryManager(memory_rag=self)
-        self.context_manager = ContextManager(self)
-
-        # Lataa API-avain repon juuresta (.env on aina repon juuressa)
-        repo_root = (
-            Path(__file__).resolve().parents[3]
-        )  # 3 tasoa ylös src/memoryrag/memory_rag.py:stä
+        # Lataa API-avain
+        repo_root = Path(__file__).resolve().parents[3]
         dotenv_path = repo_root / ".env"
 
         if not dotenv_path.exists():
@@ -60,58 +80,56 @@ class MemoryRAG(MemoryOperations):
                 "OPENAI_API_KEY puuttuu .env tiedostosta! Lisää se muodossa: OPENAI_API_KEY=your-key-here"
             )
 
-        self.client = OpenAI(api_key=api_key)
+        # Alusta OpenAI client
+        from openai import AsyncOpenAI
 
-        # Testaa API-avaimen toimivuus
-        try:
-            print("Testataan OpenAI API-yhteyttä...")
-            test_response = self.client.chat.completions.create(
-                model=self.model_name,
-                messages=[{"role": "user", "content": "Test"}],
-                max_tokens=5,
-            )
-            print("OpenAI API-yhteys toimii!")
-        except Exception as e:
-            raise ValueError(f"OpenAI API-avain ei toimi: {e}")
+        self.client = AsyncOpenAI(api_key=api_key)
 
         # Rekisteröidään käsittelijät
         self.pubsub.subscribe("query", self._handle_query)
         self.pubsub.subscribe("context_update", self._handle_context_update)
 
-    def process_query(self, query: str) -> str:
-        """
-        Käsittelee kyselyn ja rakentaa kontekstin älykkäästi.
+        # Instantiate memory_manager and context_manager so tests can call e.g. rag.memory_manager.compress_memories()
+        self.memory_manager = MemoryManager(self)
+        self.context_manager = ContextManager(self)
 
-        Prosessi:
-        1. Tallenna kysely työmuistiin
-        2. Rakenna relevantti konteksti
-        3. Suorita LLM-kysely
-        4. Tallenna vastaus episodiseen muistiin
-        """
+        # Initialize embedding model
+        try:
+            from sentence_transformers import SentenceTransformer
+
+            # Käytetään monikielistä mallia koska meillä on suomenkielistä tekstiä
+            self.embedding_model = SentenceTransformer(
+                "sentence-transformers/all-MiniLM-L6-v2"
+            )
+        except ImportError:
+            raise ImportError(
+                "sentence-transformers kirjasto puuttuu! Asenna se: pip install sentence-transformers"
+            )
+
+    async def process_query(self, query: str) -> str:
+        """Käsittelee kyselyn ja rakentaa kontekstin älykkäästi."""
         # Tallenna kysely työmuistiin
-        self._store_memory("working", query, importance=0.8)
+        await self._store_memory("working", query, importance=0.8)
 
         # Rakenna konteksti
-        context = self.context_manager.build_context(query)
+        context = await self.context_manager.build_context(query)
 
         # Suorita kysely
-        response = self._run_llm_query(query, context)
+        response = await self._run_llm_query(query, context)
 
         # Tallenna vastaus episodiseen muistiin
-        self._store_memory("episodic", f"Q: {query}\nA: {response}", importance=0.6)
+        await self._store_memory(
+            "episodic", f"Q: {query}\nA: {response}", importance=0.6
+        )
 
         return response
 
-    def _search_memories(
+    async def _search_memories(
         self, query: str, memories: List[Dict], top_k: int = 5
     ) -> List[Dict]:
-        """
-        Päivitetty haku, joka huomioi chunk-naapurit (esim. chunk_id +/- 1).
-        """
-        query_embedding = self.client.embeddings.create(
-            model="text-embedding-ada-002", input=query
-        )
-        query_vec = query_embedding.data[0].embedding
+        """Päivitetty haku, joka huomioi chunk-naapurit."""
+        # Laske kyselyn embedding
+        query_emb = await self._compute_embedding(query)
 
         scored_memories = []
         query_lower = query.lower()
@@ -121,7 +139,7 @@ class MemoryRAG(MemoryOperations):
             mem_emb = memory.get("metadata", {}).get("embedding")
             if not mem_emb:
                 continue
-            sim = self._cosine_similarity(query_vec, mem_emb)
+            sim = self._cosine_similarity(query_emb, mem_emb)
 
             content_lower = memory["content"].lower()
             keyword_hits = sum(term in content_lower for term in query_terms)
@@ -132,7 +150,6 @@ class MemoryRAG(MemoryOperations):
             # Bonus jos muistilla on vierekkäisiä chunkkeja
             neighbor_bonus = 1.0
             if c_id is not None:
-                # Etsi chunkit, joilla chunk_id on lähellä
                 neighbors = [
                     m
                     for m in memories
@@ -152,84 +169,62 @@ class MemoryRAG(MemoryOperations):
         """Muotoilee muistit kontekstiksi"""
         return "\n".join([m["content"] for m in memories])
 
-    def _handle_query(self, query: str):
+    async def _handle_query(self, query: str):
         """Sisäinen kyselyn käsittelijä"""
         # Hae relevantti konteksti
-        context = self.memory.get_context(["query_history", "context_chunks"], limit=5)
+        context = await self.memory.get_context(
+            ["query_history", "context_chunks"], limit=5
+        )
 
         # Julkaise konteksti päivitettäväksi
-        self.pubsub.publish("context_update", context)
+        await self.pubsub.publish("context_update", context)
 
-    def _handle_context_update(self, context: str):
-        """
-        Rakennetaan vastauskonteksti inline-viitteillä
-        """
+    async def _handle_context_update(self, context: str):
+        """Sisäinen kontekstin käsittelijä"""
         # Suorita LLM-kysely kontekstilla
-        # -> Lisätään linkit, jos memoryssa on "source"-metadata
-        enhanced_context_lines = []
-        # Koostetaan rivit suoraan chunkin sisällön, chunk_id:n ja sivunumeron perusteella
-
-        # Jos haluamme käyttää jo formatointia, muotoillaan ne muistot.
-        # TAI voimme olettaa, että context on jo pelkkää tekstiä.
-        # Jotta chunk-tiedot eivät katoa, voidaan muotoilla ne build_context-metodia muokaten.
-        # Nämä rivit esimerkinomaisesti havainnollistavat chunk-viitat:
-
-        lines = context.split("\n")
-        for line in lines:
-            # Etsi mahdolliset chunk-id-linjat
-            # Esim. jos build_context() tuottaa "chunk #3 (page 5): Teksti..."
-            # Tässä vain varovainen esimerkki
-            if "chunk #:" in line.lower() or "page #:" in line.lower():
-                # Insert link
-                # LISÄ-ESIMERKKI: chunk_id = 3 => [chunk 3]
-                enhanced_context_lines.append(f"{line} [link to chunk metadata?]")
-            else:
-                enhanced_context_lines.append(line)
-
-        new_context = "\n".join(enhanced_context_lines)
-
-        response = self._run_llm_query(
-            self.memory.contents["current_query"], new_context
+        response = await self._run_llm_query(
+            self.memory.contents["current_query"], context
         )
-        self.memory.update_memory("final_response", response)
 
-    def _run_llm_query(self, query: str, context: str) -> str:
-        """Suorittaa LLM-kyselyn paremmalla kontekstin käytöllä"""
-        messages = [
-            {
-                "role": "system",
-                "content": """Olet tutkimusassistentti, joka analysoi tieteellisiä artikkeleita.
-                Tehtäväsi on:
-                1. Analysoi annettu konteksti huolellisesti
-                2. Tunnista tärkeimmät kohdat jotka vastaavat kysymykseen
-                3. Muodosta selkeä ja tarkka vastaus perustuen VAIN kontekstiin
-                4. Viittaa suoraan dokumentin tekstiin käyttäen lainauksia
-                5. Jos vastaus on epävarma tai puutteellinen, kerro se selkeästi
-                
-                Älä koskaan tee oletuksia kontekstin ulkopuolelta.""",
-            },
-            {
-                "role": "user",
-                "content": f"""
-                Kysymys: {query}
-                
-                Relevantti konteksti dokumentista:
-                {context}
-                
-                Vastaa seuraavasti:
-                1. Analysoi ensin mitä tietoja konteksti tarjoaa kysymykseen
-                2. Muodosta vastaus käyttäen suoria lainauksia
-                3. Kerro selkeästi jos jokin osa vastauksesta on puutteellinen
-                """,
-            },
-        ]
+        # Tallenna vastaus
+        await self.memory.update_memory("final_response", response)
 
+    async def _run_llm_query(self, query: str, context: str) -> str:
+        """Suorittaa LLM-kyselyn."""
         try:
-            response = self.client.chat.completions.create(
+            # Käytetään olemassa olevaa clientia
+            response = await self.client.chat.completions.create(
                 model=self.model_name,
-                messages=messages,
-                temperature=0.3,  # Matalampi lämpötila tarkempaa vastausta varten
-                max_tokens=800,  # Enemmän tilaa analyysille
+                messages=[
+                    {
+                        "role": "system",
+                        "content": """Olet tutkimusassistentti, joka analysoi tieteellisiä artikkeleita.
+                        Tehtäväsi on:
+                        1. Analysoi annettu konteksti huolellisesti
+                        2. Tunnista tärkeimmät kohdat jotka vastaavat kysymykseen
+                        3. Muodosta selkeä ja tarkka vastaus perustuen VAIN kontekstiin
+                        4. Viittaa suoraan dokumentin tekstiin käyttäen lainauksia
+                        5. Jos vastaus on epävarma tai puutteellinen, kerro se selkeästi
+                        
+                        Älä koskaan tee oletuksia kontekstin ulkopuolelta.""",
+                    },
+                    {
+                        "role": "user",
+                        "content": f"""
+                        Kysymys: {query}
+                        
+                        Relevantti konteksti dokumentista:
+                        {context}
+                        
+                        Vastaa seuraavasti:
+                        1. Analysoi ensin mitä tietoja konteksti tarjoaa kysymykseen
+                        2. Muodosta vastaus käyttäen suoria lainauksia
+                        3. Kerro selkeästi jos jokin osa vastauksesta on puutteellinen
+                        """,
+                    },
+                ],
+                temperature=0.3,
+                max_tokens=800,
             )
             return response.choices[0].message.content
         except Exception as e:
@@ -240,10 +235,25 @@ class MemoryRAG(MemoryOperations):
         """Palauttaa muistin tilan"""
         return self.memory.get_memory_state()
 
-    def _store_memory(self, memory_type: str, content: str, importance: float):
-        """Tallentaa muistin pysyvästi"""
-        self.storage.store_memory(memory_type, content, importance)
-        self.memory_types = self.storage.memories  # Päivitä muisti
+    async def _store_memory(
+        self, memory_type: str, content: str, importance: float, metadata: Dict = None
+    ):
+        """Store memory asynchronously."""
+        memory_item = {
+            "content": content,
+            "importance": importance,
+            "timestamp": time.time(),
+            "metadata": metadata or {},
+        }
+        await self.storage.store_memory(memory_type, memory_item)
+        self.memory_types[memory_type].append(memory_item)
+
+        # Prepare embedding
+        mem_id = f"{memory_type}_{len(self.memory_types[memory_type])-1}"
+        embedding = await self._compute_embedding(content)
+
+        # Add to batch
+        await self._add_to_batch(mem_id, embedding)
 
     def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
         """Laskee kahden vektorin välisen kosinisamankaltaisuuden"""
@@ -260,17 +270,16 @@ class MemoryRAG(MemoryOperations):
 
         return dot_product / (norm1 * norm2)
 
-    def clear_memories(self):
+    async def clear_memories(self):
         """Tyhjentää kaikki muistit"""
-        self.storage.clear_memories()
+        await self.storage.clear_memories()
         self.memory_types = self.storage.memories
 
-    def load_document(self, file_path: str):
+    async def load_document(self, file_path: str):
         """Lataa dokumentin ja luo embeddingt älykkäällä chunking-logiikalla"""
         from .file_handlers.pdf_handler import read_pdf
 
         print(f"\nLadataan dokumenttia: {file_path}")
-        # Oletus: read_pdf palauttaa listan (page_number, text). Jos ei, korvaa “page=?”
         pages_and_paragraphs = read_pdf(file_path)
         print(f"Luettu {len(pages_and_paragraphs)} kappaletta/sivua")
 
@@ -312,26 +321,81 @@ class MemoryRAG(MemoryOperations):
         print(f"Luotu {len(chunks)} chunkkia")
 
         # Luo embeddingt chunkeille
-        embeddings = self.client.embeddings.create(
-            model="text-embedding-ada-002", input=chunks
-        )
+        embeddings = []
+        for chunk in chunks:
+            embedding = await self._compute_embedding(chunk)
+            embeddings.append(embedding)
 
         # Tallenna chunkit ja embeddingt
-        for i, (chunk, embedding) in enumerate(zip(chunks, embeddings.data)):
-            # page num on se “page_info[0]” jos halutaan tallentaa chunkin sivu
-            # (oletuksella että chunk pysyy samalla sivulla)
-            # jos haluat keskiarvoa tms., voit muokata logiikkaa.
+        for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
             page_number = page_info[0] if page_info else 0
 
-            self._store_memory(
+            await self._store_memory(
                 "semantic",
                 chunk,
                 importance=0.8,
                 metadata={
-                    "embedding": embedding.embedding,
+                    "embedding": embedding,
                     "chunk_id": i,
                     "page_number": page_number,
                     "source": file_path,
                 },
             )
         print(f"Tallennettu {len(chunks)} chunkkia muistiin")
+
+    async def _compute_embedding(self, text: str) -> np.ndarray:
+        """Compute embedding for text using the embedding model."""
+        if self.use_mps:
+            with torch.no_grad():
+                embedding = await self.embedding_model.encode(
+                    text, convert_to_numpy=False, normalize_embeddings=True
+                )
+                # Move to CPU and convert to NumPy
+                embedding = embedding.cpu().numpy()
+        else:
+            embedding = await self.embedding_model.encode(text, convert_to_numpy=True)
+
+        return embedding.astype(np.float32)
+
+    async def _add_to_batch(self, mem_id: str, embedding: np.ndarray):
+        """Add embedding to batch for processing."""
+        self.pending_embeddings.append(embedding)
+        self.pending_ids.append(mem_id)
+
+        if len(self.pending_embeddings) >= self.batch_size:
+            await self._parallel_process_batch()
+
+    async def _test_api_connection(self):
+        """Testaa API-yhteyden toimivuuden."""
+        try:
+            print("Testataan OpenAI API-yhteyttä...")
+            test_response = await self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[{"role": "user", "content": "Test"}],
+                max_tokens=5,
+            )
+            print("OpenAI API-yhteys toimii!")
+        except Exception as e:
+            raise ValueError(f"OpenAI API-avain ei toimi: {e}")
+
+    @classmethod
+    async def create(cls, model_name: str = "gpt-3.5-turbo"):
+        """Asynkroninen tehdasmetodi MemoryRAG:n luomiseen"""
+        instance = cls(model_name)
+        await instance._test_api_connection()
+        await instance._load_memories()
+        return instance
+
+    async def _load_memories(self):
+        """Lataa muistit tiedostosta"""
+        try:
+            await self.storage.load_memories()
+        except Exception as e:
+            print(f"Virhe muistien lataamisessa: {e}")
+            # Alustetaan tyhjät muistit jos lataus epäonnistuu
+            self.memory_types = {
+                "core": [],
+                "semantic": [],
+                "episodic": [],
+                "working": [],
+            }

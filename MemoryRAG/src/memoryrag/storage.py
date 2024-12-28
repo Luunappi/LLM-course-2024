@@ -1,91 +1,59 @@
+import asyncio
+import aiofiles
 import json
 from pathlib import Path
 from typing import Dict, List
 import time
+import numpy as np
+import shutil
 
 
 class StorageManager:
     """Hallinnoi muistin pysyvää tallennusta"""
 
-    def __init__(self, storage_path: str = "data/memories/history.json"):
-        self.storage_path = Path(storage_path)
-        self.storage_path.parent.mkdir(parents=True, exist_ok=True)
+    def __init__(self):
+        self.storage_path = None
+        self.memories = {"core": [], "semantic": [], "episodic": [], "working": []}
 
-        # Luo tai lataa muisti
-        if self.storage_path.exists():
-            self.memories = self._load_memories()
-        else:
-            self.memories = {"working": [], "episodic": [], "semantic": [], "core": []}
-            self._save_memories()
-
-        # Automaattinen tallennus
-        self.auto_save_interval = 60  # Tallenna minuutin välein
-        self.last_save = time.time()
-
-    def _load_memories(self) -> Dict[str, List[Dict]]:
-        """Lataa muistit tiedostosta"""
-        try:
-            with open(self.storage_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"Virhe muistin latauksessa: {e}")
-            return {"working": [], "episodic": [], "semantic": [], "core": []}
-
-    def _save_memories(self):
+    async def save_memories(self) -> bool:
         """Tallentaa muistit tiedostoon"""
         try:
+            if not self.storage_path:
+                print("Virhe: storage_path ei ole asetettu")
+                return False
+
+            import json
+
             with open(self.storage_path, "w", encoding="utf-8") as f:
-                json.dump(self.memories, f, ensure_ascii=False, indent=2)
+                json.dump(self.memories, f, indent=2, ensure_ascii=False)
+            return True
         except Exception as e:
-            print(f"Virhe muistin tallennuksessa: {e}")
+            print(f"Virhe tallennettaessa muisteja: {e}")
+            return False
 
-    def store_memory(self, memory_type: str, content: str, importance: float):
-        """Tallentaa muistin ja tekee automaattisen tallennuksen"""
-        # Rajoita muistien kokoa
-        max_content_length = 1000  # Maksimi merkkimäärä per muisti
-        if len(content) > max_content_length:
-            content = content[:max_content_length] + "..."
+    async def load_memories(self) -> dict:
+        """Lataa muistit tiedostosta"""
+        try:
+            if not self.storage_path or not self.storage_path.exists():
+                print("Virhe: storage_path ei ole asetettu tai tiedostoa ei löydy")
+                return self.memories
 
-        # Tarkista duplikaatit
-        if memory_type in self.memories:
-            # Älä tallenna jos sama sisältö on jo olemassa
-            if any(m["content"] == content for m in self.memories[memory_type]):
-                return
+            import json
 
-        # Tallenna muisti
-        memory = {
-            "content": content,
-            "importance": importance,
-            "timestamp": time.time(),
-        }
+            with open(self.storage_path, "r", encoding="utf-8") as f:
+                loaded_data = json.load(f)
+                self.memories = loaded_data
+                return loaded_data
+        except Exception as e:
+            print(f"Virhe ladattaessa muisteja: {e}")
+            return self.memories
 
+    async def store_memory(self, memory_type: str, memory_item: dict):
+        """Tallentaa yksittäisen muistin"""
         if memory_type not in self.memories:
             self.memories[memory_type] = []
-        self.memories[memory_type].append(memory)
+        self.memories[memory_type].append(memory_item)
 
-        # Automaattinen tallennus
-        if time.time() - self.last_save > self.auto_save_interval:
-            self._save_memories()
-            self.last_save = time.time()
-
-    def get_memories(self, memory_type: str) -> List[Dict]:
-        """Hakee tietyn tyypin muistit"""
-        return self.memories.get(memory_type, [])
-
-    def update_memories(self, memory_type: str, memories: List[Dict]):
-        """Päivittää tietyn tyypin muistit"""
-        self.memories[memory_type] = memories
-        self._save_memories()
-
-    def clear_memories(self):
+    async def clear_memories(self):
         """Tyhjentää kaikki muistit"""
-        self.memories = {"working": [], "episodic": [], "semantic": [], "core": []}
-        self._save_memories()
-
-    def update_memory(self, memory_type: str, memory_index: int, updates: Dict):
-        """Päivittää olemassa olevaa muistia"""
-        if memory_type in self.memories and 0 <= memory_index < len(
-            self.memories[memory_type]
-        ):
-            self.memories[memory_type][memory_index].update(updates)
-            self._save_memories()
+        self.memories = {"core": [], "semantic": [], "episodic": [], "working": []}
