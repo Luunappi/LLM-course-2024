@@ -14,4 +14,20 @@ requests>=2.25.1
 
 # Testaus
 pytest>=7.0.0
-pytest-asyncio>=0.21.0  # Async testejä varten
+pytest-asyncio>=0.25.0  # Async testejä varten
+pytest-cov>=6.0.0      # Testikattavuus
+psutil>=5.9.0          # Prosessien hallintaan
+
+# Vector search & embeddings
+sentence-transformers>=2.2.0
+faiss-cpu>=1.7.4  # For Apple Silicon, CPU version is well optimized
+torch>=2.0.0
+
+# Async IO
+aiofiles>=23.0.0  # Asynkroninen tiedostojen käsittely
+
+# Testing utilities
+fpdf2>=2.7.0  # PDF generation for tests
+python-docx>=0.8.11  # DOCX handling
+pandas>=2.0.0  # Excel handling
+openpyxl>=3.0.0  # Excel engine for pandas

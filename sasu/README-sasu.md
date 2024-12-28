@@ -179,3 +179,12 @@ python xappbench.py
 - [ZeroMQ Guide](https://zguide.zeromq.org/)
 - [NetworkX Documentation](https://networkx.org/documentation/stable/)
 
+## Sasu-kansion laajennukset
+
+Tämän kansion koodi-esimerkeillä voidaan testata ja demonstroida erilaisia laajennuksia sekä erikoistilanteita, joita MemoryRAG-järjestelmä voi kohdata. Esimerkkeinä näistä ovat:
+- Ylivuototilanteet, joissa muistia on kertynyt liikaa ja sen hallinnasta tulee kriittistä
+- Muistin aggressiivinen karsinta, jolloin matalamman prioriteetin tieto poistetaan tehokkaasti
+- Rinnakkaiset kuormitustilanteet, joissa useat eri prosessit käyttävät muistia samanaikaisesti
+
+Näiden esimerkkien avulla voi myös kehittää ja testata laajempia RAG-pohjaisia ratkaisuja, jotka hyödyntävät hierarkkista muistirakennetta ja älykästä kontekstin hallintaa juuri omiin tarpeisiin sopivalla tavalla.
+
