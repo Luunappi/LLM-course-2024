@@ -1,5 +1,7 @@
 import ollama
 import unittest
+import pytest
+import os
 
 
 # Määritellään tuetut mallit ja niiden tiedot
@@ -10,6 +12,9 @@ SUPPORTED_MODELS = {
 }
 
 
+@pytest.mark.skipif(
+    not os.system("ollama list") == 0, reason="Ollama server not running"
+)
 class TestLlama(unittest.TestCase):
     def setUp(self):
         """Suoritetaan ennen jokaista testiä"""

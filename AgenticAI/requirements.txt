@@ -1,0 +1,9 @@
+pytest==8.3.4
+pytest-asyncio==0.25.0
+pytest-cov==6.0.0
+streamlit==1.29.0
+transformers==4.35.2
+torch==2.1.2
+openai==1.6.1
+numpy==1.26.2
+aiofiles==23.2.1 
