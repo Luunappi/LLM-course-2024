@@ -14,15 +14,10 @@
 import os  # Käyttöjärjestelmätason operaatioita varten (esim. ympäristömuuttujien käsittely)
 import requests  # HTTP-pyyntöjen tekemiseen verkkosivuille
 from bs4 import BeautifulSoup  # HTML/XML-parsintaan ja käsittelyyn
-import ollama  # Mistral mallin käyttöön
 from urllib.request import (
     urlopen,
     urlretrieve,
 )  # URL:ien avaamiseen ja tiedostojen lataamiseen
-from IPython.display import (
-    Markdown,
-    display,
-)  # Markdown-muotoilun näyttämiseen Jupyter-ympäristössä
 from pypdf import PdfReader  # PDF-tiedostojen lukemiseen ja tekstin erottamiseen
 from datetime import date  # Päivämäärien käsittelyyn
 from tqdm import tqdm  # Edistymispalkin näyttämiseen silmukoissa
@@ -32,22 +27,22 @@ import json
 import hashlib
 from datetime import datetime, timedelta
 import time
-import subprocess
-import signal
-import atexit
-import psutil
-from contextlib import contextmanager
+import openai  # Lisää OpenAI import
+from dotenv import load_dotenv  # Lisää dotenv import
 
 # Määritä hakemistot
-BASE_DIR = Path(__file__).parent.parent.parent
-DATA_DIR = BASE_DIR / "data"
-PAPERS_DIR = DATA_DIR / "papers"
-TEMP_DIR = DATA_DIR / "temp"
-OUTPUT_DIR = DATA_DIR / "output"
+BASE_DIR = Path(__file__).parent  # Nyt BASE_DIR on in-context-learning kansio
+REPORTS_DIR = BASE_DIR / "HTML-reports"
+PAPERS_DIR = BASE_DIR / "papers"
+TEMP_DIR = BASE_DIR / "temp"
 
 # Luo hakemistot
-for dir_path in [PAPERS_DIR, TEMP_DIR, OUTPUT_DIR]:
+for dir_path in [REPORTS_DIR, PAPERS_DIR, TEMP_DIR]:
     dir_path.mkdir(parents=True, exist_ok=True)
+
+# Lisää OpenAI konfiguraatio
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
 def extract_pdf(url: str) -> str:
@@ -145,35 +140,16 @@ def truncate_text(text: str, max_length: int = 2000) -> str:
 
 
 def analyze_paper(url: str, text: str = None) -> Dict:
-    """Analysoi paperi käyttäen välimuistia ja Mistral mallia"""
-    start_time = time.time()
-
-    # Tarkista välimuisti (< 1ms)
-    cached_data = load_from_cache(url)
-    if cached_data:
-        cache_time = time.time() - start_time
-        print(f"Cache hit! Loaded in {cache_time*1000:.1f}ms")
-        return cached_data
-
-    # Mallin suoritus (tyypillisesti 1-5s)
+    """Analysoi paperi käyttäen GPT-4o-mini mallia"""
     model_start = time.time()
-    # Jos ei välimuistissa, analysoi teksti
+
     if text is None:
         text = extract_pdf(url)
         if not text:
-            return {
-                "summary": "PDF extraction failed",
-                "strengths": ["N/A"],
-                "weaknesses": ["N/A"],
-            }
-
-    # Lyhennä teksti ennen analyysiä
-    if text:
-        text = truncate_text(text)
+            return None
 
     # Muokataan promptia selkeämmäksi
-    prompt = (
-        """Analyze this research article and provide a structured analysis in exactly this format:
+    prompt = f"""Analyze this research article and provide a structured analysis in exactly this format:
 
 SUMMARY: Write a 1-2 sentence summary here.
 
@@ -185,97 +161,99 @@ WEAKNESSES:
 - [Weakness 1]: Explanation here
 - [Weakness 2]: Explanation here
 
-Article text: """
-        + text
-    )
+Article text: {text}"""
 
-    response = ollama.chat(
-        model="mistral", messages=[{"role": "user", "content": prompt}]
-    )
+    try:
+        response = openai.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+        )
+        content = response.choices[0].message.content
 
-    content = response["message"]["content"]
+        # Muu parsintalogiikka pysyy samana...
+        sections = content.split("\n")
+        summary = ""
+        strengths = []
+        weaknesses = []
 
-    # Debug tulostus
-    print("\nDEBUG - Raw Mistral response:")
-    print("---START OF RESPONSE---")
-    print(content)
-    print("---END OF RESPONSE---\n")
+        current_section = None
+        for line in sections:
+            line = line.strip()
+            if not line:
+                continue
 
-    # Uusi parsintalogiikka
-    sections = content.split("\n")
-    summary = ""
-    strengths = []
-    weaknesses = []
+            # Debug tulostus
+            print(f"Processing line: '{line}' (current_section: {current_section})")
 
-    current_section = None
-    for line in sections:
-        line = line.strip()
-        if not line:
-            continue
-
-        # Debug tulostus
-        print(f"Processing line: '{line}' (current_section: {current_section})")
-
-        if "SUMMARY:" in line.upper():
-            current_section = "summary"
-            summary = line.split(":", 1)[1].strip() if ":" in line else ""
-        elif "STRENGTHS:" in line.upper():
-            current_section = "strengths"
-        elif "WEAKNESSES:" in line.upper():
-            current_section = "weaknesses"
-        elif line.startswith("-") or line.startswith("*"):
-            if current_section == "strengths":
-                strengths.append(line.lstrip("- *").strip())
-            elif current_section == "weaknesses":
-                weaknesses.append(line.lstrip("- *").strip())
-        elif current_section == "summary" and not summary:
-            summary = line.strip()
-        elif (
-            current_section == "strengths"
-            and line
-            and not line.upper().startswith("WEAKNESS")
-        ):
-            # Kerää myös rivit jotka eivät ala viivalla
-            if not any(
-                line.upper().startswith(x)
-                for x in ["SUMMARY:", "STRENGTH:", "WEAKNESS:"]
+            if "SUMMARY:" in line.upper():
+                current_section = "summary"
+                summary = line.split(":", 1)[1].strip() if ":" in line else ""
+            elif "STRENGTHS:" in line.upper():
+                current_section = "strengths"
+            elif "WEAKNESSES:" in line.upper():
+                current_section = "weaknesses"
+            elif line.startswith("-") or line.startswith("*"):
+                if current_section == "strengths":
+                    strengths.append(line.lstrip("- *").strip())
+                elif current_section == "weaknesses":
+                    weaknesses.append(line.lstrip("- *").strip())
+            elif current_section == "summary" and not summary:
+                summary = line.strip()
+            elif (
+                current_section == "strengths"
+                and line
+                and not line.upper().startswith("WEAKNESS")
             ):
-                strengths.append(line.strip())
-        elif current_section == "weaknesses" and line:
-            # Kerää myös rivit jotka eivät ala viivalla
-            if not any(
-                line.upper().startswith(x)
-                for x in ["SUMMARY:", "STRENGTH:", "WEAKNESS:"]
-            ):
-                weaknesses.append(line.strip())
+                # Kerää myös rivit jotka eivät ala viivalla
+                if not any(
+                    line.upper().startswith(x)
+                    for x in ["SUMMARY:", "STRENGTH:", "WEAKNESS:"]
+                ):
+                    strengths.append(line.strip())
+            elif current_section == "weaknesses" and line:
+                # Kerää myös rivit jotka eivät ala viivalla
+                if not any(
+                    line.upper().startswith(x)
+                    for x in ["SUMMARY:", "STRENGTH:", "WEAKNESS:"]
+                ):
+                    weaknesses.append(line.strip())
 
-    # Debug tulostus lopputuloksesta
-    print("\nParsed results:")
-    print(f"Summary: {summary}")
-    print(f"Strengths: {strengths}")
-    print(f"Weaknesses: {weaknesses}\n")
+        # Debug tulostus lopputuloksesta
+        print("\nParsed results:")
+        print(f"Summary: {summary}")
+        print(f"Strengths: {strengths}")
+        print(f"Weaknesses: {weaknesses}\n")
 
-    result = {
-        "summary": summary,
-        "strengths": strengths,
-        "weaknesses": weaknesses,
-        "cached_at": datetime.now().isoformat(),
-    }
+        result = {
+            "summary": summary,
+            "strengths": strengths,
+            "weaknesses": weaknesses,
+            "cached_at": datetime.now().isoformat(),
+        }
 
-    # Tallenna välimuistiin
-    save_to_cache(url, result)
+        save_to_cache(url, result)
 
-    model_time = time.time() - model_start
-    print(f"Model inference took {model_time:.1f}s")
+        model_time = time.time() - model_start
+        print(f"Model inference took {model_time:.1f}s")
 
-    print("DEBUG - Mistral response:", content)
+        return result
 
-    return result
+    except Exception as e:
+        print(f"Error calling OpenAI API: {str(e)}")
+        return None
+
+
+def open_in_browser(file_path: Path):
+    """Avaa HTML-tiedosto oletusselaimessa"""
+    import webbrowser
+
+    webbrowser.open(f"file://{file_path.resolve()}")
 
 
 def write_html_report(papers: List[Dict], model_name: str):
     """Kirjoita tulokset HTML-tiedostoon"""
-    output_file = OUTPUT_DIR / "papers.html"
+    output_file = REPORTS_DIR / f"papers_{date.today()}.html"
 
     html_content = [
         "<html>",
@@ -287,6 +265,7 @@ def write_html_report(papers: List[Dict], model_name: str):
         "table { width: 100%; border-collapse: collapse; }",
         "th, td { border: 1px solid #ddd; padding: 12px; }",
         "th { background-color: #f5f5f5; }",
+        "footer { margin-top: 30px; text-align: center; color: #666; border-top: 1px solid #ddd; padding-top: 20px; }",
         "</style>",
         "</head>",
         "<body>",
@@ -307,90 +286,25 @@ def write_html_report(papers: List[Dict], model_name: str):
             </tr>"""
         )
 
-    html_content.extend(["</table>", "</body>", "</html>"])
+    # Lisätään alatunniste
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    html_content.extend(
+        [
+            "</table>",
+            "<footer>",
+            f"Generated on {current_time} using {model_name}",
+            "</footer>",
+            "</body>",
+            "</html>",
+        ]
+    )
 
     with open(output_file, "w", encoding="utf-8") as f:
         f.write("\n".join(html_content))
     print(f"\nReport saved to {output_file}")
 
-
-class OllamaService:
-    def __init__(self):
-        self.process = None
-        self.ready = False
-        atexit.register(self.stop)  # Varmista että palvelu suljetaan
-
-    def start(self):
-        """Käynnistä Ollama-palvelu ja odota kunnes se on valmis"""
-        print("Starting Ollama service...")
-
-        # Tarkista onko jo käynnissä
-        if self.is_running():
-            print("Ollama service already running")
-            self.ready = True
-            return
-
-        try:
-            # Käynnistä palvelu
-            self.process = subprocess.Popen(
-                ["ollama", "serve"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                universal_newlines=True,
-            )
-
-            # Odota kunnes palvelu on valmis
-            start_time = time.time()
-            while time.time() - start_time < 30:  # Timeout 30s
-                if self.is_ready():
-                    self.ready = True
-                    print("Ollama service ready")
-                    return
-                time.sleep(0.5)
-
-            raise TimeoutError("Ollama service failed to start")
-
-        except Exception as e:
-            print(f"Error starting Ollama: {str(e)}")
-            self.stop()
-            raise
-
-    def stop(self):
-        """Pysäytä Ollama-palvelu"""
-        if self.process:
-            print("Stopping Ollama service...")
-            self.process.terminate()
-            self.process.wait(timeout=5)
-            self.process = None
-            self.ready = False
-
-        # Varmista että kaikki Ollama prosessit suljetaan
-        for proc in psutil.process_iter(["name"]):
-            if proc.info["name"] == "ollama":
-                proc.kill()
-
-    def is_running(self) -> bool:
-        """Tarkista onko palvelu käynnissä"""
-        return any(proc.name() == "ollama" for proc in psutil.process_iter(["name"]))
-
-    def is_ready(self) -> bool:
-        """Tarkista onko palvelu valmis vastaanottamaan pyyntöjä"""
-        try:
-            response = requests.get("http://localhost:11434/api/tags")
-            return response.status_code == 200
-        except:
-            return False
-
-
-@contextmanager
-def ollama_service():
-    """Context manager Ollama-palvelun hallintaan"""
-    service = OllamaService()
-    try:
-        service.start()
-        yield service
-    finally:
-        service.stop()
+    # Avaa raportti selaimessa
+    open_in_browser(output_file)
 
 
 class PerformanceMonitor:
@@ -436,53 +350,46 @@ def clear_cache():
 
 def main():
     monitor = PerformanceMonitor()
-
-    # Tyhjennä välimuisti ennen ajoa
     clear_cache()
 
-    # Käynnistä Ollama automaattisesti
-    with ollama_service():
-        try:
-            # Hae paperit
-            papers = fetch_papers()
+    try:
+        # Hae paperit
+        papers = fetch_papers()
 
-            # Analysoi paperit
-            for paper in tqdm(papers, desc="Processing papers"):
-                # Yritä ensin ladata välimuistista
-                results = load_from_cache(paper["url"])
-                if results:
-                    monitor.update("cache_hit")
+        # Analysoi paperit
+        for paper in tqdm(papers, desc="Processing papers"):
+            results = load_from_cache(paper["url"])
+            if results:
+                monitor.update("cache_hit")
+            else:
+                monitor.update("cache_miss")
+                text = extract_pdf(paper["url"])
+                if text:
+                    start_time = time.time()
+                    results = analyze_paper(paper["url"], text)
+                    monitor.update("model_call", time.time() - start_time)
                 else:
-                    monitor.update("cache_miss")
-                    text = extract_pdf(paper["url"])
-                    if text:
-                        start_time = time.time()
-                        results = analyze_paper(paper["url"], text)
-                        monitor.update("model_call", time.time() - start_time)
-                    else:
-                        results = {
-                            "summary": "PDF extraction failed",
-                            "strengths": ["N/A"],
-                            "weaknesses": ["N/A"],
-                        }
-                paper.update(results)
+                    results = {
+                        "summary": "PDF extraction failed",
+                        "strengths": ["N/A"],
+                        "weaknesses": ["N/A"],
+                    }
+            paper.update(results)
 
-            # Tallenna tulokset
-            write_html_report(papers, "Mistral 7B")
+        # Tallenna tulokset
+        write_html_report(papers, "GPT-4o-mini")  # Päivitetty mallin nimi
 
-            # Tulosta suorituskykyraportti
-            stats = monitor.report()
+        # Tulosta ja tallenna metriikat
+        stats = monitor.report()
+        stats_path = REPORTS_DIR / "performance_stats.json"
+        with open(stats_path, "w") as f:
+            json.dump(stats, f, indent=2)
 
-            # Tallenna tilastot
-            stats_path = OUTPUT_DIR / "performance_stats.json"
-            with open(stats_path, "w") as f:
-                json.dump(stats, f, indent=2)
-
-        except KeyboardInterrupt:
-            print("\nOperation cancelled by user")
-        except Exception as e:
-            print(f"\nError during execution: {str(e)}")
-            raise
+    except KeyboardInterrupt:
+        print("\nOperation cancelled by user")
+    except Exception as e:
+        print(f"\nError during execution: {str(e)}")
+        raise
 
 
 if __name__ == "__main__":

@@ -7,7 +7,9 @@ from typing import Dict
 
 
 def load_system_prompt(config_path: Path) -> str:
-    """Load system prompt from config file"""
+    """Lataa järjestelmäkehotteen config-tiedostosta"""
+    # Yrittää lukea TEMPLATES-osiosta TOPIC ja NUMBER arvot
+    # Jos ei onnistu, palauttaa oletuskehotteen
     prompts = configparser.ConfigParser()
     try:
         prompts.read(config_path)
@@ -17,7 +19,11 @@ def load_system_prompt(config_path: Path) -> str:
 
 
 def format_metrics(model_name: str, is_local: bool, metrics: Dict) -> str:
-    """Format response metrics into a readable string"""
+    """Muotoilee vastauksen metriikat luettavaan muotoon:
+    - Mallin nimi ja suorituspaikka (paikallinen/pilvi)
+    - Suoritusaika
+    - Käytetyt tokenit
+    - Kustannus"""
     location = "locally" if is_local else "in cloud"
     return (
         f"\n{'='*50}\n"

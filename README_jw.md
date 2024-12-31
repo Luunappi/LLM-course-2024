@@ -1,105 +1,57 @@
 # LLM Course 2024
 
-This repository contains implementations and experiments from the LLM course, organized by week.
+## Virtuaaliympäristö
+source venv/bin/activate
+deactivate
 
-## Repository Structure
+## Requirements
+pip install pytest
+pip install python-dotenv
+pip install pytest-asyncio
 
-```
-LLM-course-2024/
-├── models/                    # Shared model files and logs
-│   ├── finetuned/            # Finetuned model files
-│   ├── logs/                 # Training and test logs
-│   └── checkpoints/          # Training checkpoints
-├── week-2/                   # In-context learning & prompting
-├── week-4/                   # Model fine-tuning experiments
-└── week-5/                   # RAG implementations
-```
+## Yleiset testit
+(testaa löytyykö tarvittavat avaimet)
+pytest api_key_tests/test_api_key_jw.py -v
 
-## Week 2: In-Context Learning & Prompting
+## Paikalliset mallit
+Ollama on avoimen lähdekoodin projekti, joka mahdollistaa LLM-mallien (Large Language Models) ajamisen paikallisesti. Tärkeimmät ominaisuudet:
+1. Mallin ajaminen paikallisesti:
+```bash 
+# Käynnistä Ollama palvelu
+ollama serve
+# Lataa malli (esim. Mistral)
+ollama pull mistral
+# Testaa mallia
+ollama run mistral "Kerro tekoälystä"
+``` 
 
-Experiments with different prompting techniques and in-context learning:
 
-* **Gemini Chatbot** (`gemini-chatbot/`)
-  - Academic assessment assistant
-  - System prompts in EN/FI
-  - Structured evaluation matrix
+Mistral-malli on asennettu Ollaman kautta ja se sijaitsee oletuksena polulla:
+~/Library/Application Support/ollama/models/mistral
 
-* **In-Context Learning** (`in-context-learning/`)
-  - Research paper analysis
-  - HTML to Markdown conversion
-  - Automated paper summaries
+Voit tarkistaa tämän:
+ls -l ~/Library/Application\ Support/ollama/models/mistral
 
-* **Prompting Examples** (`prompting-notebook/`)
-  - Different prompting techniques
-  - Model comparison tests
-  - Performance evaluation
+Kun suoritat ollama pull mistral, Ollama:
+Lataa mallin binäärit
+Tallentaa ne yllä olevaan polkuun
+Optimoi mallin suoritusta varten
+Voit myös tarkistaa asennetut mallit komennolla:
+ollama list
+Tämä näyttää kaikki lokaalisti asennetut mallit ja niiden koot. 
+```bash 
+(venv)wrightju@LM4-029-32455 LLM-course-2024 % ollama list
+NAME                ID              SIZE      MODIFIED    
+mistral:latest      f974a74358d6    4.1 GB    2 weeks ago    
+llama2:latest       78e26419b446    3.8 GB    2 weeks
+``` 
+Mistral-mallia ei voi käyttää ennen kuin:
+Asennat Ollaman (jos ei vielä asennettu):
+brew install ollama
+Käynnistät Ollama-palvelun:
+ollama serve
+Lataat Mistral-mallin:
+ollama pull mistral
 
-See [week-2/README.md](week-2/README.md) for details.
 
-## Week 4: Model Fine-tuning
 
-Fine-tuning experiments with Mistral-7B using LoRA:
-
-* **DPO Fine-tuning** (`dpo_finetuning.py`)
-  - Base: Mistral-7B-Instruct-v0.3
-  - Dataset: Anthropic's HH-RLHF
-  - LoRA adapters for efficiency
-  - MPS optimization for M-series Macs
-
-* **Model Testing** (`compare_models.py`)
-  - Base vs Finetuned comparison
-  - Gemini as evaluator
-  - 5 different test prompts
-  - Detailed performance logs
-
-* **Results**
-  - Finetuned model better in 4/5 tests
-  - Improved: Analysis depth & coherence
-  - Base better: Simple explanations
-  - Full results in `models/logs/`
-
-See [week-4/README.md](week-4/README.md) for implementation details.
-
-## Week 5: Retrieval-Augmented Generation (RAG)
-
-RAG implementations and experiments:
-
-* **Simple Local RAG** (`00_simple_local_rag.ipynb`)
-  - Local document processing
-  - Vector embeddings
-  - Similarity search
-  - Context-aware responses
-
-See [week-5/README.md](week-5/README.md) for details.
-
-## Setup & Requirements
-
-1. **Environment**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate
-   ```
-
-2. **Dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **API Keys** (in `.env`)
-   ```
-   HUGGINGFACE_TOKEN=xxx
-   GEMINI_API_KEY=xxx
-   ```
-
-## Hardware Requirements
-
-* Python 3.11+
-* M-series Mac (optimized) or GPU
-* 16GB+ RAM recommended
-
-## References
-
-* [Course Materials](https://github.com/Helsinki-NLP/LLM-course-2024)
-* [Hugging Face Documentation](https://huggingface.co/docs)
-* [LoRA Paper](https://arxiv.org/abs/2106.09685)
-* [Anthropic HH-RLHF Dataset](https://huggingface.co/datasets/Anthropic/hh-rlhf)
