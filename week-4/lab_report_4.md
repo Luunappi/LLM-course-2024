@@ -1,6 +1,6 @@
 # Lab Report 4
 
-Tämä on raportti DPO-fine-tuning -kokeilusta Mistral-7B -mallilla. Seuraavassa käydään läpi sovellettua menetelmää, käytettyä dataa sekä havaintoja mallien vertailusta.
+Raportti DPO-fine-tuning -kokeilusta Mistral-7B -mallilla. Seuraavassa käydään läpi sovellettua menetelmää, käytettyä dataa sekä havaintoja mallien vertailusta.
 
 ## 1. Tavoite
 
@@ -42,5 +42,3 @@ Perusmalli pärjäsi parhaiten hyvin yksinkertaisissa, vähäsisältöisissä ky
 
 Koe vahvisti, että Mistral-7B hyötyy DPO-lähestymistavasta, etenkin ihmisten mieltymysten (chosen vs. rejected) suhteen. Koulutettu malli toimi yhden testausajon perusteella luotettavammin ja kattavammin verrattuna base-malliin. Myös ominaisuuksien (kuten perusteluiden kirjoittamisen) kehitys oli selvästi havaittavissa. Käytännön sovelluksia ajatellen malli on hyödyllinen erityisesti tehtävissä, joissa vastauksen laatuun vaikuttavat inhimilliset mieltymykset tai eettiset/harkintaa vaativat näkökulmat.
 
----
-Viimeksi muokattu: {{ site.time | date: "%Y-%m-%d" }} 

@@ -56,10 +56,30 @@ Toteutettu RAG-sovellus vastaa tehtävänannon kohtaan 1 (monikielinen PDF-tuki)
 
 Vaikka tässä projektissa ei toteutettu agenttipohjaista RAG-ratkaisua suoraan, erillisessä hakemistossa (week-5/AgenticRAG_system) on kokeiltu eräänlaista agenttitoiminnallisuutta RAG:lle. Siellä on testattu mm. agentin ohjaamaa hakua ja vastausten koordinointia. 
 
-- Mahdollinen jatkototeutus:
-  - Intent recognition LLM:llä
-  - Työkalujen integrointi (esim. stock API)
-  - Vastausten validointi
+Viimeisimpänä löytyi openai:n esimerkkikurssi, jossa sivutaan moniagenttista tapaa toteuttaa toiveita.
+-> ks. /references/Reasoning-with-o1/L3.ipynb tai
+https://learn.deeplearning.ai/courses/reasoning-with-o1/lesson/4/planning-with-o1
+(en ehtinyt testata tätä vielä kunnolla tämän kurssin puitteissa mutta jatkon kannalta mielenkiintoinen)
+
+**Planning**
+- Create a plan to solve a task.
+- Given a set of tools to carry out the plan and constraints to set bounds around the task.
+- This kind of use case would be very slow if we used o1 for every step.
+- So what we’ll do is generate a plan with o1-mini, and the execute each step with GPT-4o-mini. 
+- This trade-off of intelligence against latency and cost is a practical one that we’ve seen developers use to great effect so far.
+
+**Plan Generation + Execution Architecture**
+
+      **User** -> question / skenario 
+      ->  	
+      Plan Generation (o1-mini) [instructions of how to build a plan]
+      (o1-has build in multi-step reasoning logic to build a durable plan)
+      ->	
+      Plan Execution (gpt-4o-mini)
+      Number of worker (tools which can use to carry out the plan.)
+      ->
+      Answer to **user**
+
 
 ### Task 4: GraphRAG (ei toteutettu)
 - Mahdollinen toteutus:

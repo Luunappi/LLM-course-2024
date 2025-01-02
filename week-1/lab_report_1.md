@@ -1,6 +1,6 @@
 # Lab Report 1
 
-## 1. Mitä tokenisaattorit ovat? (n. 250 sanaa)
+## 1. Mitä tokenisaattorit ovat? 
 
 Tokenisaattorit ovat työkaluja, jotka pilkkovat tekstin pienempiin osiin eli tokeneihin. Nämä tokenit voivat olla kokonaisia sanoja, sananosia tai yksittäisiä merkkejä, ja niiden avulla kielimallit, kuten GPT tai BERT, pystyvät käsittelemään tekstiä rakenteellisella tavalla. Ajatuksena on muuttaa inhimillinen kieli mallille ymmärrettävään muotoon, jotta se voi mallintaa sanojen tai merkkien väliset suhteet. Tokenisaattori ei siis pelkästään riko tekstiä satunnaisesti, vaan se on kehitetty tunnistamaan kielen rakenteita ja jakamaan ne juuri sopiviin yksiköihin.
 
@@ -10,7 +10,7 @@ Eri tokenisaattorit (kuten Byte-Pair Encoding, Unigram-malli ja WordPiece) on ke
 
 ---
 
-## 2. Miksi tokenisaattorit ovat tärkeitä kielimallinnuksessa ja suurissa kielimalleissa? (n. 300 sanaa)
+## 2. Miksi tokenisaattorit ovat tärkeitä kielimallinnuksessa ja suurissa kielimalleissa? 
 
 Tokenisaattorit ovat olennainen osa kielimallinnusta, koska ne määrittävät tavan, jolla malli “näkee” ja prosessoi tekstin. Ilman tokenisaattoreita modernit kielimallit eivät pystyisi erottelemaan sanoja, sananosia tai merkkejä toisistaan, mikä tekisi kielen ymmärtämisestä ja käsittelemisestä sekavaa ja epätehokasta. Mallin suorituskyky onkin vahvasti sidoksissa siihen, miten järkevällä tavalla teksti on pilkottu: epätarkka tai liian karkea tokenisointi voi johtaa siihen, että malli ei opi kielen hienovaraisia rakenteita.
 
@@ -20,7 +20,7 @@ Tokenisaattorit vaikuttavat paljon myös siihen, kuinka “sulavasti” malli tu
 
 ---
 
-## 3. Erilaiset tokenisaatioalgoritmit ja suosituimmat menetelmät (n. 300 sanaa)
+## 3. Erilaiset tokenisaatioalgoritmit ja suosituimmat menetelmät
 
 Tokenisaatioalgoritmit kehittyvät jatkuvasti, ja eri menetelmillä on omat etunsa. Yksi suosituimmista on Byte-Pair Encoding (BPE), jota käytetään esimerkiksi GPT-sarjan malleissa. BPE aloittaa merkkikohtaisesta jaosta ja yhdistää yleisimmin esiintyviä merkkijonoja, kunnes syntyy optimaaliseksi katsottu sanasto. Tällä tavalla se pystyy hallitsemaan sekä yleisiä että harvinaisia sanoja varsin tehokkaasti. BPE:n vahvuus on sen yksinkertaisuus ja kyky sopeutua erilaisiin kieliin, joissa sanojen muodot vaihtelevat.
 

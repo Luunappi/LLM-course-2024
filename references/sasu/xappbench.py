@@ -1,6 +1,6 @@
 # LLM Memory (DDMMem) part of the MemoryFormer architecture
 # Note this is experimental POC code
-# Sasu Tarkoma, 2024
+
 
 # Simple benchmarking with a generated xApp
 # We generate the app and then benchmark LLM and code versions of the app.
@@ -19,154 +19,133 @@ import numpy as np
 # Post-processing was done for format clarity, but no semantic changes.
 
 
-
-
 instruction_text_llm = [
-  {
-    "command": "SUBSCRIBE",
-    "event": "data_transfer",
-    "anchor": "DataTransferEvents"
-  },
-  {
-    "command": "LLM-TRIGGER",
-    "event": "data_transfer",
-    "prompt": "Extract the 4 latest data transfer events from the DataTransferEvents anchor, calculate their average size, and detect any anomalies in these events.",
-    "anchor": "LatestDataTransferAnalysis",
-    "scope": "DataTransferEvents",
-  },
-  {
-    "command": "LLM-CONTENT-TRIGGER",
-    "prompt": "Generate a summary report on the average data transfer size and any anomalies detected in the latest events. Include recommendations for improvement.",
-    "anchor": "SummaryReport",
-    "scope": "LatestDataTransferAnalysis DataTransferEvents"
-  }
+    {"command": "SUBSCRIBE", "event": "data_transfer", "anchor": "DataTransferEvents"},
+    {
+        "command": "LLM-TRIGGER",
+        "event": "data_transfer",
+        "prompt": "Extract the 4 latest data transfer events from the DataTransferEvents anchor, calculate their average size, and detect any anomalies in these events.",
+        "anchor": "LatestDataTransferAnalysis",
+        "scope": "DataTransferEvents",
+    },
+    {
+        "command": "LLM-CONTENT-TRIGGER",
+        "prompt": "Generate a summary report on the average data transfer size and any anomalies detected in the latest events. Include recommendations for improvement.",
+        "anchor": "SummaryReport",
+        "scope": "LatestDataTransferAnalysis DataTransferEvents",
+    },
 ]
 
 
 instruction_text_code = [
-  {
-    "command": "SUBSCRIBE",
-    "event": "data_transfer",
-    "anchor": "DataTransferEvents"
-  },
-  {
-    "command": "CODE-TRIGGER",
-    "event": "data_transfer",
-    "code": (
-      "def main_function(DataTransferEvents):\n"
-      "    # Extract the 4 latest data transfer events, calculate their average size, and detect any anomalies in these events.\n"
-      "    import statistics\n"
-      "    latest_events = sorted(DataTransferEvents, key=lambda x: x['timestamp'], reverse=True)[:4]\n"
-      "    sizes = [event['size'] for event in latest_events if 'size' in event]\n"
-      "    avg_size = sum(sizes) / len(sizes)\n"
-      "    anomalies = [event for event in latest_events if event['size'] > 1.5 * avg_size or event['size'] < 0.5 * avg_size]\n"
-      "    return {'average_size': avg_size, 'anomalies': anomalies}\n"
-    ),
-    "scope": "DataTransferEvents",
-    "anchor": "LatestDataTransferAnalysis"
-  },
-  {
-    "command": "CODE-CONTENT-TRIGGER",
-    "code": (
-      "def main_function(LatestDataTransferAnalysis, DataTransferEvents):\n"
-      "    # Generate a summary report on the average data transfer size and any anomalies detected in the latest events.\n"
-      "    import statistics\n"
-      "    avg_size = LatestDataTransferAnalysis['average_size']\n"
-      "    anomalies = LatestDataTransferAnalysis['anomalies']\n"
-      "    recommendations = 'No recommendations'\n"
-      "    if len(anomalies) > 0:\n"
-      "        recommendations = 'Check network configuration for unusual traffic patterns'\n"
-      "    return {'summary_report': f'Average data transfer size: {avg_size} bytes', 'recommendations': recommendations}\n"
-    ),
-    "scope": "LatestDataTransferAnalysis DataTransferEvents",
-    "anchor": "SummaryReport"
-  }
+    {"command": "SUBSCRIBE", "event": "data_transfer", "anchor": "DataTransferEvents"},
+    {
+        "command": "CODE-TRIGGER",
+        "event": "data_transfer",
+        "code": (
+            "def main_function(DataTransferEvents):\n"
+            "    # Extract the 4 latest data transfer events, calculate their average size, and detect any anomalies in these events.\n"
+            "    import statistics\n"
+            "    latest_events = sorted(DataTransferEvents, key=lambda x: x['timestamp'], reverse=True)[:4]\n"
+            "    sizes = [event['size'] for event in latest_events if 'size' in event]\n"
+            "    avg_size = sum(sizes) / len(sizes)\n"
+            "    anomalies = [event for event in latest_events if event['size'] > 1.5 * avg_size or event['size'] < 0.5 * avg_size]\n"
+            "    return {'average_size': avg_size, 'anomalies': anomalies}\n"
+        ),
+        "scope": "DataTransferEvents",
+        "anchor": "LatestDataTransferAnalysis",
+    },
+    {
+        "command": "CODE-CONTENT-TRIGGER",
+        "code": (
+            "def main_function(LatestDataTransferAnalysis, DataTransferEvents):\n"
+            "    # Generate a summary report on the average data transfer size and any anomalies detected in the latest events.\n"
+            "    import statistics\n"
+            "    avg_size = LatestDataTransferAnalysis['average_size']\n"
+            "    anomalies = LatestDataTransferAnalysis['anomalies']\n"
+            "    recommendations = 'No recommendations'\n"
+            "    if len(anomalies) > 0:\n"
+            "        recommendations = 'Check network configuration for unusual traffic patterns'\n"
+            "    return {'summary_report': f'Average data transfer size: {avg_size} bytes', 'recommendations': recommendations}\n"
+        ),
+        "scope": "LatestDataTransferAnalysis DataTransferEvents",
+        "anchor": "SummaryReport",
+    },
 ]
 
 
-
-
-
-instruction_text_llm2  = [
-  {
-    "command": "SUBSCRIBE",
-    "event": "data_transfer",
-    "anchor": "latest_events"
-  },
-  {
-    "command": "LLM-TRIGGER",
-    "event": "data_transfer",
-    "prompt": "Extract 4 latest events from the subscription anchor and write them to latest_events anchor. Process those events that are available, can be less than 4. Write the events exactly in chronological order back. No additional remarks.",
-    "anchor": "latest_events",
-    "scope": "latest_events"
-  },
-  {
-    "command": "LLM-CONTENT-TRIGGER",
-    "prompt": "Calculate average data transfer size of the latest 4 events in latest_events anchor and write result to analysis anchor. Detect anomalies in data sizes by comparing them with the calculated average and append results to analysis anchor.",
-    "anchor": "analysis",
-    "scope": "latest_events"
-  },
-  {
-    "command": "LLM-CONTENT-TRIGGER",
-    "prompt": "Generate a summary report from the results stored in the analysis anchor and write it to report anchor. Include the calculated average data transfer size, detected anomalies with corresponding event information, and any other relevant insights.",
-    "anchor": "report",
-    "scope": "analysis"
-  }
+instruction_text_llm2 = [
+    {"command": "SUBSCRIBE", "event": "data_transfer", "anchor": "latest_events"},
+    {
+        "command": "LLM-TRIGGER",
+        "event": "data_transfer",
+        "prompt": "Extract 4 latest events from the subscription anchor and write them to latest_events anchor. Process those events that are available, can be less than 4. Write the events exactly in chronological order back. No additional remarks.",
+        "anchor": "latest_events",
+        "scope": "latest_events",
+    },
+    {
+        "command": "LLM-CONTENT-TRIGGER",
+        "prompt": "Calculate average data transfer size of the latest 4 events in latest_events anchor and write result to analysis anchor. Detect anomalies in data sizes by comparing them with the calculated average and append results to analysis anchor.",
+        "anchor": "analysis",
+        "scope": "latest_events",
+    },
+    {
+        "command": "LLM-CONTENT-TRIGGER",
+        "prompt": "Generate a summary report from the results stored in the analysis anchor and write it to report anchor. Include the calculated average data transfer size, detected anomalies with corresponding event information, and any other relevant insights.",
+        "anchor": "report",
+        "scope": "analysis",
+    },
 ]
 
 
-contents_text_llm={}
+contents_text_llm = {}
 
 instruction_text_code2 = [
-  {
-    "command": "SUBSCRIBE",
-    "event": "data_transfer",
-    "anchor": "latest_events"
-  },
-  {
-    "command": "CODE-TRIGGER",
-    "event": "data_transfer",
-    "code": (
-      "def main_function(latest_events):\n"
-      "    # Extract the 4 most recent events from the subscription anchor\n"
-      "    return latest_events[:4]\n"
-    ),
-    "scope": "latest_events",
-    "anchor": "latest_events"
-  },
- {
-    "command": "CODE-CONTENT-TRIGGER",
-    "code": (
-      "def main_function(latest_events):\n"
-      "    # Calculate average data transfer size of the latest 4 events\n"
-      "    total_size = sum(event['size'] for event in latest_events if 'size' in event)\n"
-      "    average_size = total_size / len([event for event in latest_events if 'size' in event])\n"
-      "    # Detect anomalies in data sizes by comparing them with the calculated average\n"
-      "    anomalies = [event for event in latest_events if abs(event['size'] - average_size) > 100]\n"
-      "    return {'average_size': average_size, 'anomalies': anomalies}\n"
-    ),
-    "scope": "latest_events",
-    "anchor": "analysis"
-  },
-  {
-    "command": "CODE-CONTENT-TRIGGER",
-    "code": (
-      "def main_function(analysis):\n"
-      "    # Generate a summary report from the results stored in the analysis anchor\n"
-      "    average_size = analysis['average_size']\n"
-      "    anomalies = analysis['anomalies']\n"
-      "    report = 'Average data transfer size: {}'.format(average_size)\n"
-      "    if anomalies:\n"
-      "        report += 'Anomalies detected:{}'.format(''.join(str(anomaly) for anomaly in anomalies))\n"
-      "    return {'report': report}\n"
-    ),
-    "scope": "analysis",
-    "anchor": "report"
-  }
+    {"command": "SUBSCRIBE", "event": "data_transfer", "anchor": "latest_events"},
+    {
+        "command": "CODE-TRIGGER",
+        "event": "data_transfer",
+        "code": (
+            "def main_function(latest_events):\n"
+            "    # Extract the 4 most recent events from the subscription anchor\n"
+            "    return latest_events[:4]\n"
+        ),
+        "scope": "latest_events",
+        "anchor": "latest_events",
+    },
+    {
+        "command": "CODE-CONTENT-TRIGGER",
+        "code": (
+            "def main_function(latest_events):\n"
+            "    # Calculate average data transfer size of the latest 4 events\n"
+            "    total_size = sum(event['size'] for event in latest_events if 'size' in event)\n"
+            "    average_size = total_size / len([event for event in latest_events if 'size' in event])\n"
+            "    # Detect anomalies in data sizes by comparing them with the calculated average\n"
+            "    anomalies = [event for event in latest_events if abs(event['size'] - average_size) > 100]\n"
+            "    return {'average_size': average_size, 'anomalies': anomalies}\n"
+        ),
+        "scope": "latest_events",
+        "anchor": "analysis",
+    },
+    {
+        "command": "CODE-CONTENT-TRIGGER",
+        "code": (
+            "def main_function(analysis):\n"
+            "    # Generate a summary report from the results stored in the analysis anchor\n"
+            "    average_size = analysis['average_size']\n"
+            "    anomalies = analysis['anomalies']\n"
+            "    report = 'Average data transfer size: {}'.format(average_size)\n"
+            "    if anomalies:\n"
+            "        report += 'Anomalies detected:{}'.format(''.join(str(anomaly) for anomaly in anomalies))\n"
+            "    return {'report': report}\n"
+        ),
+        "scope": "analysis",
+        "anchor": "report",
+    },
 ]
 
 
-contents_text_code={}
+contents_text_code = {}
 
 
 def generate_random_events(event_type, num_events=100):
@@ -175,22 +154,24 @@ def generate_random_events(event_type, num_events=100):
     error_messages = {
         "CONNECTION_TIMEOUT": "Connection timed out after 30 seconds",
         "DATA_CORRUPTION": "Data corruption detected during transfer",
-        "UNKNOWN_ERROR": "An unknown error occurred"
+        "UNKNOWN_ERROR": "An unknown error occurred",
     }
-    
+
     events = []
     current_time = datetime.utcnow()
 
     for _ in range(num_events):
         event = {
             "type": event_type,
-            "timestamp": (current_time - timedelta(minutes=random.randint(0, 1440))).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "timestamp": (
+                current_time - timedelta(minutes=random.randint(0, 1440))
+            ).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "source_ip": f"192.168.1.{random.randint(1, 254)}",
             "destination_ip": f"192.168.1.{random.randint(1, 254)}",
             "protocol": random.choice(protocols),
-            "port": random.randint(1024, 65535)
+            "port": random.randint(1024, 65535),
         }
-        
+
         if event_type == "disconnection":
             event["duration"] = random.randint(1, 7200)  # duration in seconds
         elif event_type == "data_transfer":
@@ -199,14 +180,10 @@ def generate_random_events(event_type, num_events=100):
             error_code = random.choice(error_codes)
             event["error_code"] = error_code
             event["error_message"] = error_messages[error_code]
-        
+
         events.append(event)
 
-    return events #json.dumps(events, indent=2)
-
-
-
-
+    return events  # json.dumps(events, indent=2)
 
 
 def benchmark_part(memory, events, runs=10):
@@ -223,8 +200,7 @@ def benchmark_part(memory, events, runs=10):
         end_time = time.time() * 1000  # Convert to milliseconds
         timings.append(end_time - start_time)
     return timings
-    
-    
+
 
 # Define the memory instance
 memory = DynamicDistLLMMemory(instruction_text_llm, contents_text_llm)
@@ -246,11 +222,11 @@ print("-----------------------------")
 print("Testing LLM memory")
 events = generate_random_events("data_transfer", 20)
 
-#for e in events:
+# for e in events:
 #    memory.react_to_event(e["type"], e)
 
-#print("Testing LLM code memory")
-#for e in events:
+# print("Testing LLM code memory")
+# for e in events:
 #    memory2.react_to_event(e["type"], e)
 
 
@@ -273,6 +249,3 @@ print(memory.get_contents())
 print("-----------------------------")
 print(memory2.get_contents())
 print("-----------------------------")
-
-
-

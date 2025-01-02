@@ -1,18 +1,17 @@
 # LLM Memory (DDMMem) part of the MemoryFormer architecture
 # Note this is experimental POC code
-# Sasu Tarkoma, 2024
 
 
 # The MemoryFormer generates LLM memories given the input specifications.
 # The idea is that it calibrates the generation process and outputs also auditing results,
-# and optimized plan how to distribute the memory usage. 
+# and optimized plan how to distribute the memory usage.
 #
 # The LLM use within the memory could generate also executable code. This would require
 # additional security measures.
-# 
-# The memory can include a generated description of the memory that can be given to 
+#
+# The memory can include a generated description of the memory that can be given to
 # an LLM for using the memory in the best way. This is only possible in the MemoryFormer
-# generation process at the moment. 
+# generation process at the moment.
 
 import json
 import re
@@ -24,22 +23,34 @@ import numpy as np
 
 
 instruction_text = [
-  {"command": "LLM-QUERY", "prompt": "", "anchor": "Tasklist", "scope": "Input Init XAPPEvents JSON-Example Example-events", "model":"ollama/llama3.1:70b"},
-  {"command": "LLM-QUERY", "prompt": "", "anchor": "Code", "scope": "Tasks Models Tasklist Input", "model":"ollama/llama3.1:70b"},
-#  {"command": "LLM-QUERY", "prompt": "", "anchor": "Code2", "scope": "Code-opt Code Python Example-events", "model":"ollama/llama3.1:70b"},
-#  {"command": "LLM-QUERY", "prompt": "", "anchor": "Code2", "scope": "Code-opt-final InterimCode Python", "model":"ollama/llama3.1:70b"},
-#  {"command": "LLM-QUERY", "prompt": "", "anchor": "Memory-structure", "scope": "Memory-prompt Code2", "model":"ollama/llama3:70b-instruct"},
-#  {"command": "LLM-QUERY", "prompt": "", "anchor": "Test", "scope": "Test Code2", "model":"ollama/llama3:70b-instruct"},
+    {
+        "command": "LLM-QUERY",
+        "prompt": "",
+        "anchor": "Tasklist",
+        "scope": "Input Init XAPPEvents JSON-Example Example-events",
+        "model": "ollama/llama3.1:70b",
+    },
+    {
+        "command": "LLM-QUERY",
+        "prompt": "",
+        "anchor": "Code",
+        "scope": "Tasks Models Tasklist Input",
+        "model": "ollama/llama3.1:70b",
+    },
+    #  {"command": "LLM-QUERY", "prompt": "", "anchor": "Code2", "scope": "Code-opt Code Python Example-events", "model":"ollama/llama3.1:70b"},
+    #  {"command": "LLM-QUERY", "prompt": "", "anchor": "Code2", "scope": "Code-opt-final InterimCode Python", "model":"ollama/llama3.1:70b"},
+    #  {"command": "LLM-QUERY", "prompt": "", "anchor": "Memory-structure", "scope": "Memory-prompt Code2", "model":"ollama/llama3:70b-instruct"},
+    #  {"command": "LLM-QUERY", "prompt": "", "anchor": "Test", "scope": "Test Code2", "model":"ollama/llama3:70b-instruct"},
 ]
 
 # note should change query = event and use prompt not to confuse LLMs
 
 contents_text = {
-    "AppEvents":"Include only xApp events that are necessary for the tasks. The xApp events are: new_connection_request, incoming_connection_attempt, client_connection_request, connection_termination, client_disconnected, session_end, data_transfer_start, data_transfer_end, data_transfer_metrics, error_occurred, connection_failure, transmission_error, protocol_violation, authentication_successful, authentication_failed, configuration_change, policy_update, device_setting_change, performance_latency, performance_throughput, performance_packet_loss, alert_notification, security_alert, threshold_breach, system_notification, resource_allocation, resource_deallocation, qos_priority_change, qos_traffic_shaping, firmware_update, software_update, user_activity_log, unauthorized_access_attempt, ddos_attack, malware_detection, topology_change, device_addition, device_removal, bandwidth_usage_report, device_health_status, cpu_usage_report, memory_usage_report, operational_status_update",
+    "AppEvents": "Include only xApp events that are necessary for the tasks. The xApp events are: new_connection_request, incoming_connection_attempt, client_connection_request, connection_termination, client_disconnected, session_end, data_transfer_start, data_transfer_end, data_transfer_metrics, error_occurred, connection_failure, transmission_error, protocol_violation, authentication_successful, authentication_failed, configuration_change, policy_update, device_setting_change, performance_latency, performance_throughput, performance_packet_loss, alert_notification, security_alert, threshold_breach, system_notification, resource_allocation, resource_deallocation, qos_priority_change, qos_traffic_shaping, firmware_update, software_update, user_activity_log, unauthorized_access_attempt, ddos_attack, malware_detection, topology_change, device_addition, device_removal, bandwidth_usage_report, device_health_status, cpu_usage_report, memory_usage_report, operational_status_update",
     "Init": (
         "Generate application memory tasks given the following specification in simple command format for further "
         "processing. The memory has instructions and content. The tasks use commands that operate on named content items. "
-         "The prompts will have access to the identified data items (called scopes). These are appended to the prompt as context."
+        "The prompts will have access to the identified data items (called scopes). These are appended to the prompt as context."
         "The JSON structure is a list of commands that have parameters."
         "You can use intermediate content anchors to store and analyze data. For example selecting a subset of events. Do not mix content objects in JSON anchors. This will help in partitioning of the application."
         "You can also use trigger conditions for triggering further actions, such as complex LLM processing. This will help in later optimization."
@@ -49,7 +60,7 @@ contents_text = {
         "event is a label for event type (not a list), "
         "prompt is a prompt string, "
         "anchor is a string, always the content destination,"
-        "scope is a string of one or more content items for the given command separated by whitespaces," 
+        "scope is a string of one or more content items for the given command separated by whitespaces,"
         "model is the LLM model name to be used. Only use the provided LLM model or omit this. "
         "The commands with their allowed parameters are: "
         "SUBSCRIBE event, anchor;"
@@ -57,14 +68,14 @@ contents_text = {
         "LLM-QUERY (only used in init stage) prompt, anchor, scope, model, datalimit;"
         "LLM-TRIGGER event, prompt, anchor, scope, model, datalimit;"
         "LLM-CONTENT-TRIGGER prompt, anchor, scope (content changed), model, datalimit;"
-#        "COMPRESS anchor, prompt, datalimit;"
-#        "FETCH url, anchor."
-       "Notes: scope can be used to include prompt content to LLM commands."
-       "Scopes are useful in reading information, but they are also costly and change in any of the scopes will trigger an update."
-       "Anchor write will replace the content. Do not implement multiple writes to the same anchor without updating the whole anchor."
+        #        "COMPRESS anchor, prompt, datalimit;"
+        #        "FETCH url, anchor."
+        "Notes: scope can be used to include prompt content to LLM commands."
+        "Scopes are useful in reading information, but they are also costly and change in any of the scopes will trigger an update."
+        "Anchor write will replace the content. Do not implement multiple writes to the same anchor without updating the whole anchor."
     ),
-# ---------------
-    "Test" : "Output test events for the given reactive JSON program. The events are used to test the program.",
+    # ---------------
+    "Test": "Output test events for the given reactive JSON program. The events are used to test the program.",
     "Tasks": """
     Given the input JSON task descriptions with operations examine the prompts for clarity and correctness. 
     The prompts are provided within the JSON commands. Expand prompts  to make them more instructive and accurate for the requested functionality.
@@ -74,25 +85,22 @@ contents_text = {
     Output only continuous JSON and ONLY MODIFY PROMPTS. DO NOT OUTPUT THOUGHTS."
     Start output from '[', output JSON list of dictionaries: example [{},{}]
     """,
-# ---------------
-    "JSON-Example":"""Here is an example:
+    # ---------------
+    "JSON-Example": """Here is an example:
     instruction_text_ = [
     {"command": "SUBSCRIBE", "event": "AA", "anchor": "AAA"},
     {"command": "SUBSCRIBE", "event": "BB", "anchor": "BBB"},
     {"command": "LLM-TRIGGER", "event": "AA", "prompt" :"Re-evaluate the latency values and write update latency part for the analysis.", "anchor": "AAAA", "scope":"AAA"},
     {"command": "LLM-TRIGGER", "event": "BB", "prompt" :"Re-evaluate the packet loss values and write update to this part of the analysis.", "anchor": "BBBB", "scope":"BBB"},
     {"command": "LLM-CONTENT-TRIGGER", "prompt" :"Re-evaluate the overall network slice status and write detailed analysis.", "anchor": "CCCC", "scope":"AAAA BBBB"},
-  ]""",    
-
-# ---------------
-
-    "Code-opt-final":"Consider the CODE elements of the JSON and carefully ensure that the code is executable."
+  ]""",
+    # ---------------
+    "Code-opt-final": "Consider the CODE elements of the JSON and carefully ensure that the code is executable."
     "Do not modify anything except the Python code. Do not modify JSON encoding. The input parameters are given in a list of dictionaries in the order of the scope entries. Scope field identifies the parameters."
     "Output only continuous JSON and pay particular attention to multiline strings."
     "Ensure that the final output can be parsed as JSON and the Python code in JSON is correctly formatted.",
-
-# ---------------
-    "Code-opt":"Consider each LLM invocation prompt provided after these instructions (LLM-QUERY, LLM-TRIGGER, LLM-CONTENT-TRIGGER) and if the prompt is implementable in safe basic Python, implement the LLM operation. "
+    # ---------------
+    "Code-opt": "Consider each LLM invocation prompt provided after these instructions (LLM-QUERY, LLM-TRIGGER, LLM-CONTENT-TRIGGER) and if the prompt is implementable in safe basic Python, implement the LLM operation. "
     "If so, change the command to one of the code commands. Include all commands, do not change other commands than requested."
     "The commands are:"
     "scope denotes the params in all code fields (param1 param2...). Only these are available."
@@ -101,9 +109,9 @@ contents_text = {
     "CODE-CONTENT-TRIGGER code scope anchor, where scope denotes the parameters and content triggers"
     "The parameter code denotes executable safe Python code. Output only continuous JSON and pay particular attention to multiline strings. "
     "Strip Leading and Trailing Whitespace: Ensures no extraneous whitespace at the beginning or end of the string."
-#    "Remove Leading and Trailing Quotes: Checks if the string starts and ends with double quotes and removes them if present."
+    #    "Remove Leading and Trailing Quotes: Checks if the string starts and ends with double quotes and removes them if present."
     "Replace Multiple Spaces: Replaces sequences of two or more spaces with a single space."
-#    "Escape Newline Characters: Ensures that newline (\n), carriage return (\r), and tab (\t) characters are properly escaped."
+    #    "Escape Newline Characters: Ensures that newline (\n), carriage return (\r), and tab (\t) characters are properly escaped."
     "Remove Extraneous Whitespace Around Delimiters: Removes spaces around JSON delimiters like braces ({}), brackets ([]), colons (:), and commas (,)."
     "Remove Control Characters: Removes any remaining control characters that may cause issues."
     "Use regular string delimiters with proper escaping for the code part. Output full code for the functionality."
@@ -111,7 +119,7 @@ contents_text = {
     "You have to have the def main_function(param1, param2): in the code, the params are the scopes. The input parameters are given in a list of dictionaries. "
     "Ensure that the anchor writes and reads are aligned in terms of the JSON data structure. If you write a list of dicts to an anchor, you need to then use the same format when reading."
     "Do not use import. ONLY INCLUDE CODE in the 'code' value. Here is an example of Python code:"
-"""
+    """
 [
     {
         "command": "CODE-TRIGGER",
@@ -129,25 +137,23 @@ contents_text = {
 Use dictionaries to store results.
 You must use exactly the same term as parameter in the main_function as specified in the scope.
 """
-
-"""
+    """
 #"""
-#{
-#  "instruction_text": [
-#    {
-#      "command": "CODE",
-#      "code": "def main_function(param1, param2):\\n    compiled_pattern = re['compile'](param2)\\n    matches = re['findall'](compiled_pattern, param1)\\n    return {\\n        'matches': matches,\\n        'count': len(matches),\\n        'uppercase': str_methods['upper'](param1)\\n    }",
-#      "scope": "param1 param2",
-#      "anchor": "result"
-#    }
-#  ]
-#}
-#"""
-"\nOutput the full JSON app without thoughts and carefully check JSON notation."
-"Do not escape. Start output from '['",
-
-# ---------------
-    "Memory-prompt:":"Instructions: Output the memory structure of the input code in continuous JSON. The output needs to be in the form of available content items (anchors) and their brief description.",
+    # {
+    #  "instruction_text": [
+    #    {
+    #      "command": "CODE",
+    #      "code": "def main_function(param1, param2):\\n    compiled_pattern = re['compile'](param2)\\n    matches = re['findall'](compiled_pattern, param1)\\n    return {\\n        'matches': matches,\\n        'count': len(matches),\\n        'uppercase': str_methods['upper'](param1)\\n    }",
+    #      "scope": "param1 param2",
+    #      "anchor": "result"
+    #    }
+    #  ]
+    # }
+    # """
+    "\nOutput the full JSON app without thoughts and carefully check JSON notation."
+    "Do not escape. Start output from '['",
+    # ---------------
+    "Memory-prompt:": "Instructions: Output the memory structure of the input code in continuous JSON. The output needs to be in the form of available content items (anchors) and their brief description.",
     "Input": (
         "Objective: Develop a lightweight Network Event Analyzer xApp that subscribes to network quality events, processes these "
         "events, and performs basic analysis to provide insights."
@@ -157,8 +163,8 @@ You must use exactly the same term as parameter in the main_function as specifie
         "It will generate a summary report in written format. Operate on the 4 latest events that are extracted from the subscription anchor. Events are in an ordered list. "
     ),
     "Models": "Use LLM model: ollama/llama3.1:70b",
-    "Example":"Here is an example.",
-    "Python":"""
+    "Example": "Here is an example.",
+    "Python": """
     # ONLY USE THESE Python features. DO NOT import modules.
     SAFE_BUILTINS = {
     'abs': abs,
@@ -234,8 +240,7 @@ SAFE_GLOBALS = {
 Note: print is not available.
 """,
     # ---------------
-
-    "Example-events" : """Here are example events.
+    "Example-events": """Here are example events.
     [
   {
     "type": "connection",
@@ -274,7 +279,7 @@ Note: print is not available.
     "error_message": "Connection timed out after 30 seconds"
   }
 ]
-"""
+""",
 }
 
 #   "Input": (
@@ -303,22 +308,21 @@ def extract_json_from_llm_output(raw_output):
         if raw_output.startswith('"') and raw_output.endswith('"'):
             raw_output = raw_output[1:-1]
 
-      
         # Locate the first opening brace or bracket
-        start_object = raw_output.find('{')
-        start_array = raw_output.find('[')
-        
+        start_object = raw_output.find("{")
+        start_array = raw_output.find("[")
+
         if start_object == -1 and start_array == -1:
             raise ValueError("No JSON structure found in the provided string.")
-        
+
         if start_object != -1 and (start_array == -1 or start_object < start_array):
             start = start_object
-            opening = '{'
-            closing = '}'
+            opening = "{"
+            closing = "}"
         else:
             start = start_array
-            opening = '['
-            closing = ']'
+            opening = "["
+            closing = "]"
 
         # Use a stack to find the matching closing brace or bracket
         stack = []
@@ -333,22 +337,24 @@ def extract_json_from_llm_output(raw_output):
                     break
 
         if stack:
-            raise ValueError(f"No matching closing {closing} found for the opening {opening}.")
+            raise ValueError(
+                f"No matching closing {closing} found for the opening {opening}."
+            )
 
         # Extract the JSON string
         json_string = raw_output[start:end]
 
         # Remove problematic newline patterns and any other known issues
         #  json_string = re.sub(r'}\s*\n\s*\]', '}]', json_string)
-  
+
         fixed_json_string = clean_json_string(json_string)
 
         print(f"JSON STRING {fixed_json_string}")
 
-        # For now we use just the raw LLM output       
+        # For now we use just the raw LLM output
         # Convert JSON string to Python dictionary or list
         python_data = json.loads(json_string)
-        
+
         return python_data
     except json.JSONDecodeError as e:
         raise ValueError(f"Error decoding JSON: {e}")
@@ -357,36 +363,37 @@ def extract_json_from_llm_output(raw_output):
 def clean_json_string(json_string):
     # Strip leading and trailing whitespace
     cleaned_string = json_string.strip()
-    
+
     # Remove leading and trailing quotes if present
     if cleaned_string.startswith('"') and cleaned_string.endswith('"'):
         cleaned_string = cleaned_string[1:-1]
-    
+
     # Replace multiple spaces with a single space
-    cleaned_string = re.sub(r'\s{2,}', ' ', cleaned_string)
-    
+    cleaned_string = re.sub(r"\s{2,}", " ", cleaned_string)
+
     # Escape necessary characters (e.g., newlines in values)
-    cleaned_string = cleaned_string.replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
-    
+    cleaned_string = (
+        cleaned_string.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+    )
+
     # Remove extraneous whitespace around JSON delimiters
-    cleaned_string = re.sub(r'\s*([\{\}\[\]:,])\s*', r'\1', cleaned_string)
-    
+    cleaned_string = re.sub(r"\s*([\{\}\[\]:,])\s*", r"\1", cleaned_string)
+
     # Remove control characters
-    cleaned_string = re.sub(r'[\x00-\x1F\x7F]', '', cleaned_string)
-    
-    #cleaned_string = re.sub(r'}\s*\n\s*\]', '}]', cleaned_string)
-   
-    cleaned_string = cleaned_string.replace('}\n]', '}]')
+    cleaned_string = re.sub(r"[\x00-\x1F\x7F]", "", cleaned_string)
 
-    cleaned_string = cleaned_string.replace('}\\n]', '}]')
+    # cleaned_string = re.sub(r'}\s*\n\s*\]', '}]', cleaned_string)
 
-  
+    cleaned_string = cleaned_string.replace("}\n]", "}]")
+
+    cleaned_string = cleaned_string.replace("}\\n]", "}]")
+
     return cleaned_string
 
 
 def normalize_json_string(json_string):
     # Remove newline and escape characters
-    json_string = json_string.replace('\n', '').replace('\r', '').replace('\t', '')
+    json_string = json_string.replace("\n", "").replace("\r", "").replace("\t", "")
 
     # Normalize spaces around keys and values
     json_string = json_string.strip()
@@ -398,32 +405,32 @@ def normalize_json_string(json_string):
     except json.JSONDecodeError as e:
         print("Error decoding JSON:", e)
         return None
-        
-        
-        
-        
+
+
 def generate_random_events(event_type, num_events=100):
     protocols = ["TCP", "UDP"]
     error_codes = ["CONNECTION_TIMEOUT", "DATA_CORRUPTION", "UNKNOWN_ERROR"]
     error_messages = {
         "CONNECTION_TIMEOUT": "Connection timed out after 30 seconds",
         "DATA_CORRUPTION": "Data corruption detected during transfer",
-        "UNKNOWN_ERROR": "An unknown error occurred"
+        "UNKNOWN_ERROR": "An unknown error occurred",
     }
-    
+
     events = []
     current_time = datetime.utcnow()
 
     for _ in range(num_events):
         event = {
             "type": event_type,
-            "timestamp": (current_time - timedelta(minutes=random.randint(0, 1440))).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "timestamp": (
+                current_time - timedelta(minutes=random.randint(0, 1440))
+            ).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "source_ip": f"192.168.1.{random.randint(1, 254)}",
             "destination_ip": f"192.168.1.{random.randint(1, 254)}",
             "protocol": random.choice(protocols),
-            "port": random.randint(1024, 65535)
+            "port": random.randint(1024, 65535),
         }
-        
+
         if event_type == "disconnection":
             event["duration"] = random.randint(1, 7200)  # duration in seconds
         elif event_type == "data_transfer":
@@ -432,16 +439,11 @@ def generate_random_events(event_type, num_events=100):
             error_code = random.choice(error_codes)
             event["error_code"] = error_code
             event["error_message"] = error_messages[error_code]
-        
+
         events.append(event)
 
-    return events #json.dumps(events, indent=2)
+    return events  # json.dumps(events, indent=2)
 
-
-
-
-        
-        
 
 # Define the memory instance
 memory = DynamicDistLLMMemory(instruction_text, contents_text)
@@ -450,11 +452,11 @@ memory = DynamicDistLLMMemory(instruction_text, contents_text)
 memory.execute_instruction_init()
 
 print("-----------------------------")
-#print(memory.getContext("Code"))
+# print(memory.getContext("Code"))
 print(memory.get_contents())
 print("-----------------------------")
 
-#print(f"Trying to extract JSON from {memory.getContext('Code2')}")
+# print(f"Trying to extract JSON from {memory.getContext('Code2')}")
 print("-----------------------------")
 
 
@@ -468,25 +470,36 @@ codeMem = DynamicDistLLMMemory(code2, {})
 print("Memory structure")
 print(codeMem.get_instructions())
 
-#------
+# ------
 # Create the code
 insta = codeMem.get_instructions()
 print("---------------------------- code gen")
 code_prompt = memory.getContext("Code-opt Code Python Example-events")
 for inst in insta:
     print(f"Inst: {inst}")
-    if 'command' in inst:
+    if "command" in inst:
         print(f"Comparing {inst['command']}")
-        if "LLM" in inst['command']:
+        if "LLM" in inst["command"]:
             print(f"Processing code {inst}")
-            anchor = inst['anchor']
-            iprompt = inst['prompt']
-            scopes = inst['scope']
-            prompt = (f"Implement the following functionality: ({iprompt}) in safe Python."
-            f"The scope references (JSON objects) are: {scopes}."
-            f"Code instructions: {code_prompt}")
-            codeMem.execute_command({"command": "CODIFY", "prompt": prompt, "anchor": anchor, "scope": "", "model":"ollama/llama3.1:70b", "source":inst})
-        
+            anchor = inst["anchor"]
+            iprompt = inst["prompt"]
+            scopes = inst["scope"]
+            prompt = (
+                f"Implement the following functionality: ({iprompt}) in safe Python."
+                f"The scope references (JSON objects) are: {scopes}."
+                f"Code instructions: {code_prompt}"
+            )
+            codeMem.execute_command(
+                {
+                    "command": "CODIFY",
+                    "prompt": prompt,
+                    "anchor": anchor,
+                    "scope": "",
+                    "model": "ollama/llama3.1:70b",
+                    "source": inst,
+                }
+            )
+
 print("Memory structure with code")
 print(codeMem.get_instructions())
 print(codeMem.get_contents())
@@ -514,7 +527,7 @@ audit_mem = ""
 for a in audit_nodes:
     audit_mem += f"{a} "
 
-contents_text['Audit-points'] = audit_mem.strip()  
+contents_text["Audit-points"] = audit_mem.strip()
 
 # Then we need to generate the audit tests, e.g., with prompts
 # Tests should be generated for all LLM processed items and then
@@ -527,7 +540,3 @@ print("-----------------------------")
 print("Optimized memory:")
 bundle = codeMem.detect_bundles()
 print(bundle)
-
-
-
-
