@@ -1,5 +1,3 @@
-
-
 # User-specific stuff
 .idea/**/workspace.xml
 .idea/**/tasks.xml
@@ -298,3 +296,16 @@ ENV/
 
 .DS_Store
 command
+
+# Project specific directories
+references/sasu/
+cache/
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
