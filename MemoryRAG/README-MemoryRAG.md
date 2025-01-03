@@ -2,11 +2,10 @@
 
 MemoryRAG yhdistää kielimallin ja hierarkkisen muistin tarjoten skaalautuvan, asynkronisen ja monikerroksisen tavan hallita tietoa. 
 
-Olitpa rakentamassa keskustelubottia, dokumenttihakujärjestelmää tai tutkimusapuria, MemoryRAG:n avulla pidät tärkeät faktat, yleisen kontekstin ja keskusteluhistorian järjestyksessä ja helposti haettavissa.
+MemoryRAG pitää tärkeät faktat, yleisen kontekstin ja keskusteluhistorian järjestyksessä ja helposti haettavissa.
 
 Se tarjoaa neljä muistityyppiä (core, semantic, episodic, working), jotka mahdollistavat dynaamisen ja suorituskykyisen tiedon hallinnan. 
 
-(pohjautuu Sasun kehittämään AgentFormers ja MemoryFormers menetelmään sekä MemGPT artikkeliin)
 
 ## Keskeiset ominaisuudet
 
@@ -36,17 +35,59 @@ Se tarjoaa neljä muistityyppiä (core, semantic, episodic, working), jotka mahd
    • Tuki Apple Silicon MPS -kiihdytykselle ja GPU-laskennalle (mikäli torch tai muu taustakirjasto mahdollistaa).  
    • Inkrementaalinen tallennus ja varmuuskopiot.
 
-## Peruskäyttö (asynkroninen)
+## Peruskäyttö 
 
-Esimerkki koodista:
+**MemoryRAG:ssa on kaksi käyttöliittymävaihtoehtoa:**
+1. Komentorivi-käyttöliittymä (CLI):
+```bash
+# Käynnistä komentorivityökalu
+python MemoryRAG/examples/chat_cli.py
+```
 
+2. Graafinen käyttöliittymä (GUI):
+```bash
+# Käynnistä graafinen käyttöliittymä
+python MemoryRAG/examples/chat_gui.py
+```
+Ennen käynnistystä varmista että:
+1. OpenAI API-avain on asetettu .env tiedostossa projektin juuressa.
+2. Virtuaaliympäristö on aktivoitu
+```bash
+# Huom! Luotu koko repon juuressa
+source venv/bin/activate
+# deactivate
+```
+3. Tarvittavat riippuvuudet on asennettu:
+```bash
+pip install -r MemoryRAG/requirements.txt
+```
+**Graafisessa käyttöliittymässä voit:**
+- Ladata dokumentteja
+- Tehdä kyselyitä
+- Nähdä muistin tilan
+- Tallentaa ja ladata muistin
+
+**Komentorivityökalussa käytettävissä olevat komennot:**
+- /save <tiedosto> : Tallenna muisti
+- /load <tiedosto> : Lataa muisti
+- /stats : Näytä muistin tila
+- /clear : Tyhjennä muisti
+- /exit tai q : Lopeta
+
+Voit myös antaa dokumentteja käsiteltäväksi suoraan käynnistyksen yhteydessä:
+```bash
+python MemoryRAG/examples/chat_cli.py data/dokumentti.pdf data/toinen.txt
+```
+
+### Esimerkki koodista
+(asynkroninen)
 ```python
 import asyncio
 from memoryrag import MemoryRAG
 
 async def main():
     # Luodaan instanssi asynkronisesti
-    rag = await MemoryRAG.create(model_name="gpt-3.5-turbo")
+    rag = await MemoryRAG.create(model_name="o1-mini")
 
     # Tallennetaan tietoa core- ja semantic-muistiin
     await rag._store_memory("core", "Tekoäly on tietokoneiden kyky simuloida älykästä toimintaa", importance=1.0)
@@ -87,5 +128,4 @@ if __name__ == "__main__":
 • MemoryRAG on mahdollista lokaloida tai kääntää muille kielille, koska se toimii pitkälti kielimallien varassa.  
 • Jatkokehitykseen kuuluu mm. tehokkaampien embeddausmallien integrointi (sentence-transformers, LlamaIndex tms.) ja entistä laajempi tuki isojen datamäärien semanttiselle haulle.
 
-## Yhteenveto
 

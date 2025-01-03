@@ -77,5 +77,5 @@ Thumbs.db
 
 # Project specific
 .sesskey
-*.html
+# *.html
 references/sasu/

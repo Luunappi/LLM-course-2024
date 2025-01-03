@@ -36,39 +36,12 @@ Retrieval Augmented Generation (RAG) -pohjainen keskustelujärjestelmä, joka hy
 - Token-käytön ja kustannusten arviointi
 - Yksityiskohtaiset prosessitiedot laajennettavassa näkymässä
 
-## Käyttöönotto
 
-1. Kloonaa repositorio:
-```bash
-git clone https://github.com/yourusername/AgenticAI.git
-cd AgenticAI
-```
-
-2. Luo ja aktivoi virtuaaliympäristö:
-```bash
-python -m venv venv
-source venv/bin/activate  # Unix
-# tai
-.\venv\Scripts\activate  # Windows
-```
-
-3. Asenna riippuvuudet:
-```bash
-pip install -e .
-```
-
-4. Kopioi .env.example tiedosto ja lisää API avaimet:
-```bash
-cp .env.example .env
-# Muokkaa .env tiedostoa ja lisää OPENAI_API_KEY
-```
-
-5. Käynnistä sovellus:
+## Käyttö
+Käynnistä sovellus:
 ```bash
 streamlit run src/main.py
 ```
-
-## Käyttö
 
 ### Dokumenttien lisäys
 1. Käytä sivupaneelin "Lataa dokumentti" -toimintoa
@@ -88,20 +61,20 @@ streamlit run src/main.py
 
 ## Tekninen rakenne
 
-### Core [TESTATTU ✓]
+### Core 
 - Event System: Tapahtumapohjainen kommunikaatio
 - Orchestrator: Agenttien koordinointi
 
-### Agents [TESTATTU ✓]
+### Agents
 - BaseAgent: Perusagentti tapahtumakäsittelyllä
 - RAGAgent: RAG-toiminnallisuuden kapselointi
 
-### RAG [TESTATTU ✓]
+### RAG 
 - Retriever: Dokumenttien haku E5-mallilla
 - Generator: Vastausten generointi GPT-mallilla
 - Manager: RAG-toiminnallisuuden koordinointi
 
-### UI [TESTATTU ✓]
+### UI 
 - RAGChatUI: Streamlit-pohjainen käyttöliittymä
 - FileManager: Tiedostojen hallinta
 - ProcessTracker: Prosessien seuranta
