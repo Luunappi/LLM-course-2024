@@ -85,3 +85,14 @@ def render_model_selector():
         if selected_model != st.session_state["current_model"]:
             st.session_state["current_model"] = selected_model
             st.success(f"Model changed to {selected_model}")
+
+    st.markdown("""
+    ### Model Settings
+    
+    Select the model to use for:
+    - Direct LLM queries
+    - RAG responses
+    - Visualization data generation and summaries
+    
+    Note: Visualization need evaluation uses a fixed GPT-4-Turbo model for consistent assessment.
+    """)

@@ -8,5 +8,9 @@ torch>=2.0.0
 numpy>=1.24.0
 stqdm>=0.0.5
 
+# Visualization
+plotly>=5.18.0
+pandas>=2.0.0
+
 # Optional
 watchdog>=3.0.0  # Streamlit dev experience 

@@ -11,23 +11,24 @@ Toteutettu RAG-sovellus vastaa tehtävänannon kohtaan 1 (monikielinen PDF-tuki)
 ## Tiedostorakenne
 
 RAG_System/
-├── RAG-GUI.py                # Graafinen käyttöliittymä
-├── RAG-Orchestrator.py       # Pääsovellus
+├── GUI.py                    # Graafinen käyttöliittymä
+├── RAG-Orchestrator.py           # Pääsovellus
 ├── ui_components/            
 │   ├── chat_module.py         # Chat-toiminnallisuus
 │   ├── rag_module.py          # RAG-toiminnallisuus (mm.tiedostojen lataus)
 │   ├── diagram_module.py      # Visualisoinnit
-│   ├── info_module.py         # Token/kustannusseuranta
+│   ├── models_module.py       # Models
+│   ├── info_module.py         # System sessages
 │   ├── prompt_module.py       # Prompt-hallinta
-│   └── side_info_module.py    # Sivupaneeli
+│   └── token_module.py        # Token-Info
 └── requirements.txt           # Riippuvuudet
 
 ## Testaaminen
 Käynnistä Streamlit-sovellus seuraavalla komennolla projektin hakemistossa:
 
 ```bash
-cd week-5/RAG_SupplyChain
-streamlit run pdf_rag_ui.py
+cd week-5/RAG-System
+streamlit run GUI.py
 ```
 
 ## Tehtävänannon analyysi ja toteutus

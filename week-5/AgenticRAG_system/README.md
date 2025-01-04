@@ -1,4 +1,5 @@
 # AgenticRAG System
+(old -> look: RAG-System)
 
 Modulaarinen ja laajennettava RAG (Retrieval-Augmented Generation) järjestelmä, joka hyödyntää agenttipohjaista arkkitehtuuria ja pub/sub-viestintää. Järjestelmä on optimoitu erityisesti Apple Silicon -prosessoreille.
 
