@@ -1,0 +1,22 @@
+{
+  "core": [],
+  "semantic": [],
+  "episodic": [
+    {
+      "content": "K: Kerro joposta\nV: \"Joposta\" on suomalainen verkkokauppa, joka myy py\u00f6ri\u00e4 ja py\u00f6r\u00e4ilytarvikkeita. Joposta l\u00f6ytyy laaja valikoima erilaisia py\u00f6ri\u00e4, kuten maastopy\u00f6ri\u00e4, kaupunkipy\u00f6ri\u00e4 ja lastenpy\u00f6ri\u00e4. Lis\u00e4ksi verkkokaupasta voi ostaa tarvikkeita, kuten kyp\u00e4r\u00f6it\u00e4, valoja ja muita py\u00f6r\u00e4ilyyn liittyvi\u00e4 tuotteita. Jopon tavoitteena on tarjota asiakkailleen laadukkaita tuotteita kilpailukykyiseen hintaan sek\u00e4 erinomaista asiakaspalvelua. Mik\u00e4li haluat tiet\u00e4\u00e4 lis\u00e4\u00e4, voin auttaa sinua tarkemmin!",
+      "importance": 0.6,
+      "metadata": {
+        "timestamp": 1736005421.264447
+      }
+    }
+  ],
+  "working": [
+    {
+      "content": "Kerro joposta",
+      "importance": 0.7,
+      "metadata": {
+        "timestamp": 1736005418.8607008
+      }
+    }
+  ]
+}

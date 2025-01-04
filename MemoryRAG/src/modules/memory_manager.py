@@ -1,3 +1,9 @@
+"""
+• Kuvaus: Hallinnoi muistien elinkaarta ja priorisointia.
+• Rooli: Tärkeä, jos halutaan tehokkaasti poistaa vanhat muistit tai järjestää muistit tärkeyden mukaan.
+• Tarpeellisuus: “Avustava” mutta melko keskeinen – memory_rag.py kutsuu usein memory_manageria muistien puhdistukseen ja priorisoinnille.
+"""
+
 from typing import List, Dict, Any
 import time
 from datetime import datetime, timedelta

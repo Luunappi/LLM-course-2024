@@ -8,6 +8,7 @@ class AgenticMemory:
     - Nimetyt muistiankkurit
     - Kontekstin hallinnan
     - Muistin päivitysten seurannan
+    --> JW Tarkista tämä! Ei ole käytössä.
     """
 
     def __init__(self):

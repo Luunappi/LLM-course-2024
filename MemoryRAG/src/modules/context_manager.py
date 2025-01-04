@@ -1,3 +1,9 @@
+"""
+• Kuvaus: Rakentaa ja käsittelee kontekstia kyselyä varten (esim. tiktoken-tokenisoinnit, luokitukset “what”, “why”, “how” jne.).
+• Rooli: Tärkeä, jos halutaan tehokkaasti rajoittaa vastauksen pituutta tai käsitellä erilaisten kysymystyyppien konteksteja.
+• Tarpeellisuus: “Avustava” mutta melko keskeinen – memory_rag.py kutsuu usein context_manageria kontekstin luomiseen.
+"""
+
 from typing import List, Dict, Tuple
 import tiktoken
 import re
@@ -77,44 +83,21 @@ class ContextManager:
 
         return "\n".join(context_parts)
 
-    def build_context(self, query: str) -> str:
+    async def build_context(self, query: str) -> str:
         """Rakentaa kontekstin kyselyä varten"""
-        max_context_length = 8000  # Kasvatettu kontekstin kokoa
+        try:
+            # Käytä asynkronista hakua
+            semantic_memories = await self.memory_rag._search_memories(
+                query, self.memory_rag.memory_types.get("semantic", [])
+            )
 
-        context_parts = []
-
-        # 1. Lisää aiemmat relevantit kysymykset ja vastaukset
-        recent_qa = self.memory_rag.memory_types.get("episodic", [])[-3:]  # Viimeiset 3
-        if recent_qa:
-            context_parts.append("Recent Q&A:")
-            for qa in recent_qa:
-                context_parts.append(qa["content"])
-
-        # 2. Hae relevantit muistit semanttisesta muistista
-        semantic_memories = self.memory_rag._search_memories(
-            query, self.memory_rag.memory_types.get("semantic", [])
-        )
-
-        # Rajoita muistien määrää top_k:n mukaan
-        semantic_memories = semantic_memories[:5]  # Ota 5 relevanteinta
-
-        # 3. Järjestä muistit tärkeyden mukaan
-        semantic_memories = sorted(
-            semantic_memories,
-            key=lambda x: x.get("importance", 0) * 0.7 + x.get("similarity", 0) * 0.3,
-            reverse=True,
-        )
-
-        # 4. Lisää muistit kontekstiin
-        total_length = len("\n".join(context_parts))
-        for mem in semantic_memories:
-            mem_text = f"- {mem['content']}"
-            if total_length + len(mem_text) < max_context_length:
-                context_parts.append(mem_text)
-                total_length += len(mem_text)
-
-        self.last_context = "\n".join(context_parts)  # Tallenna viimeisin konteksti
-        return self.last_context
+            # Muotoile konteksti
+            context = self._format_memories(semantic_memories[:5])
+            self.last_context = context
+            return context
+        except Exception as e:
+            print(f"Virhe kontekstin rakentamisessa: {str(e)}")
+            return ""
 
     def get_last_context(self) -> str:
         """Palauttaa viimeisimmän käytetyn kontekstin"""

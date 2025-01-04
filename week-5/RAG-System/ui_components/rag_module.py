@@ -1,3 +1,14 @@
+"""
+RAG (Retrieval Augmented Generation) Module
+
+This module handles document processing, embedding generation, and semantic search functionality.
+It includes:
+- PDF/TXT/MD file upload and processing
+- Text chunking and embedding generation
+- Semantic search functionality
+- Debug mode toggle for detailed information
+"""
+
 import streamlit as st
 import re
 from openai import OpenAI
@@ -10,14 +21,26 @@ import fitz  # PyMuPDF
 from datetime import datetime
 import pandas as pd
 import time
+import traceback
 
 # Load environment variables from root .env
-root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+root_dir = os.path.dirname(
+    os.path.dirname(os.path.dirname(__file__))
+)  # Siirry ui_components -> RAG-System -> week-5
+root_dir = os.path.dirname(root_dir)  # Siirry vielä yksi ylös projektin juureen
 dotenv_path = os.path.join(root_dir, ".env")
+print(f"Loading .env from: {dotenv_path}")  # Debug tulostus
 load_dotenv(dotenv_path)
 
+# Tarkista että avain löytyi
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    st.error("OpenAI API key not found in .env file")
+else:
+    st.success("OpenAI API key loaded successfully")
+
 # Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=api_key)
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"  # Estä tokenizer-varoitukset
 
@@ -47,24 +70,24 @@ def semantic_search(query, chunks, embeddings, top_k=3):
         # Muunna query embedding samaan muotoon kuin dokumentin embeddings
         query_embedding = model.encode([query])
         query_embedding = torch.tensor(query_embedding)
-        
+
         # Varmista että embeddings on oikeassa muodossa
         if len(query_embedding.shape) == 2:
             query_embedding = query_embedding.squeeze(0)
-        
+
         # Normalisoi embeddings
         query_embedding = query_embedding / query_embedding.norm()
         embeddings = embeddings / embeddings.norm(dim=1, keepdim=True)
-        
+
         # Laske similarity
         similarities = torch.matmul(embeddings, query_embedding)
-        
+
         # Hae top_k indeksit
         top_indices = similarities.argsort(descending=True)[:top_k]
-        
+
         # Debug tulostus
         st.write(f"Found {len(top_indices)} relevant chunks")
-        
+
         return [chunks[idx] for idx in top_indices]
     except Exception as e:
         st.error(f"Error in semantic search: {str(e)}")
@@ -111,33 +134,45 @@ Answer:"""
 
 
 def render_rag_module():
-    st.subheader("RAG Module: Upload & Search")
-    
-    # Debug info for embeddings
-    if "processed_files" in st.session_state:
+    st.subheader("Upload & Search")
+
+    # Debug mode toggle
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        show_debug = st.toggle(
+            "Show Debug Info",
+            value=st.session_state.get("show_debug", False),
+            help="Toggle debug information visibility",
+        )
+        if show_debug != st.session_state.get("show_debug"):
+            st.session_state.show_debug = show_debug
+            st.rerun()
+
+    # Debug info expander - näytetään vain jos debug on päällä
+    if st.session_state.get("show_debug", False):
         with st.expander("Debug Info", expanded=False):
             st.write("Cached files:")
             for filename, data in st.session_state.processed_files.items():
                 st.write(f"File: {filename}")
                 st.write(f"- Chunks: {len(data['chunks'])}")
-                st.write(f"- Embeddings shape: {data['embeddings'].shape if 'embeddings' in data else 'No embeddings'}")
+                st.write(
+                    f"- Embeddings shape: {data['embeddings'].shape if 'embeddings' in data else 'No embeddings'}"
+                )
 
     # Show loaded files expander
     with st.expander("Loaded Documents", expanded=True):
         if st.session_state.processed_files:
             st.markdown("### Currently loaded documents:")
-            
+
             # Create a table of loaded documents
             data = []
             for filename, file_data in st.session_state.processed_files.items():
                 chunks_count = len(file_data["chunks"])
                 timestamp = file_data.get("timestamp", "N/A")
-                data.append({
-                    "Filename": filename,
-                    "Chunks": chunks_count,
-                    "Loaded": timestamp
-                })
-            
+                data.append(
+                    {"Filename": filename, "Chunks": chunks_count, "Loaded": timestamp}
+                )
+
             # Display as a DataFrame
             df = pd.DataFrame(data)
             st.dataframe(df)
@@ -158,7 +193,7 @@ def render_rag_module():
 def process_pdf(file):
     try:
         bytes_data = file.getvalue()
-        
+
         # Create a progress container that we'll clear at the end
         progress_container = st.empty()
         with progress_container.container():
@@ -178,7 +213,7 @@ def process_pdf(file):
                     text = page.get_text()
                     if text.strip():
                         text_pages.append(text)
-                    
+
                     progress = (page_num + 1) / total_pages
                     progress_bar.progress(progress)
                     status_text.text(f"Reading page {page_num + 1}/{total_pages}")
@@ -187,14 +222,14 @@ def process_pdf(file):
 
             all_text = "\n".join(text_pages)
             status_text.text(f"✓ Successfully extracted {len(text_pages)} pages")
-            
+
             # Chunking phase
             progress_text.text("Chunking text...")
             progress_bar.progress(0)  # Reset progress bar
             chunks = chunk_text_by_sentences(all_text)
             st.session_state.chunks = chunks
             status_text.text(f"✓ Created {len(chunks)} text chunks")
-            
+
             # Embeddings phase with better progress tracking
             with progress_container.container():
                 progress_text.text("Creating embeddings...")
@@ -202,21 +237,23 @@ def process_pdf(file):
                 model = get_embedding_model()
                 batch_size = 16  # Pienempi batch-koko
                 all_embeddings = []
-                
+
                 total_chunks = len(chunks)
                 for i in range(0, total_chunks, batch_size):
                     try:
                         batch = chunks[i : min(i + batch_size, total_chunks)]
-                        status_text.text(f"Processing batch {i//batch_size + 1}/{(total_chunks + batch_size - 1)//batch_size}")
-                        
+                        status_text.text(
+                            f"Processing batch {i//batch_size + 1}/{(total_chunks + batch_size - 1)//batch_size}"
+                        )
+
                         # Create embeddings for batch
                         batch_embeddings = get_embeddings(batch, model)
                         all_embeddings.append(batch_embeddings)
-                        
+
                         # Update progress
                         progress = (i + len(batch)) / total_chunks
                         progress_bar.progress(progress)
-                        
+
                     except Exception as e:
                         st.error(f"Error in batch {i//batch_size + 1}: {str(e)}")
                         continue
@@ -224,14 +261,18 @@ def process_pdf(file):
                 try:
                     # Combine all embeddings
                     st.session_state.embeddings = torch.cat(all_embeddings, dim=0)
-                    status_text.text(f"✓ Created embeddings: shape {st.session_state.embeddings.shape}")
+                    status_text.text(
+                        f"✓ Created embeddings: shape {st.session_state.embeddings.shape}"
+                    )
                 except Exception as e:
                     st.error(f"Error combining embeddings: {str(e)}")
                     return False
 
                 # Verify embeddings
                 if st.session_state.embeddings is not None:
-                    st.success(f"Embeddings created successfully: {st.session_state.embeddings.shape}")
+                    st.success(
+                        f"Embeddings created successfully: {st.session_state.embeddings.shape}"
+                    )
                 else:
                     st.error("Failed to create embeddings")
                     return False
@@ -242,17 +283,17 @@ def process_pdf(file):
                 "embeddings": st.session_state.embeddings,
                 "timestamp": datetime.now().isoformat(),
                 "total_chunks": total_chunks,
-                "total_pages": total_pages
+                "total_pages": total_pages,
             }
-            
+
             # Final success message inside container
             progress_text.text("✓ All processing completed!")
             progress_bar.progress(1.0)
             time.sleep(1)  # Show completion for a moment
-            
+
         # Clear the progress container
         progress_container.empty()
-        
+
         # Show final success message outside the container
         st.success(f"""Successfully processed {file.name}:
         - Pages processed: {total_pages}

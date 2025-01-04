@@ -30,7 +30,7 @@ project_root = str(Path(__file__).parent.parent)
 sys.path.append(project_root)
 
 from dotenv import load_dotenv
-from src.memoryrag import MemoryRAG
+from src.modules import MemoryRAG
 
 
 def demonstrate_memory_features():

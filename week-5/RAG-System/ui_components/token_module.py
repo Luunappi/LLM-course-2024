@@ -1,3 +1,10 @@
+"""
+Token Module
+
+Displays token usage information and cost calculations.
+Shows model details and usage statistics.
+"""
+
 import streamlit as st
 
 
@@ -18,17 +25,17 @@ def calculate_token_cost(input_tokens, output_tokens, model):
     return cost
 
 
-def render_info_module():
-    with st.expander("Model Info"):
+def render_token_module():  # Muutettu funktion nimi
+    with st.expander("Token Info"):
         # Get current model and token counts from session state
         current_model = st.session_state.get("current_model", "Not used yet")
         input_tokens = st.session_state.get("input_tokens", 0)
         output_tokens = st.session_state.get("output_tokens", 0)
         embedding_model = "sentence-transformers/all-mpnet-base-v2"
-        
+
         # Calculate cost
         cost = calculate_token_cost(input_tokens, output_tokens, current_model)
-        
+
         # Display model info
         st.markdown("### Models Used")
         st.write("**Last Response:**")
@@ -37,7 +44,7 @@ def render_info_module():
         else:
             st.write("- LLM Model: Not used yet")
         st.write(f"- Embedding Model: {embedding_model} (for semantic search)")
-        
+
         # Display token usage with columns
         st.markdown("### Token Usage")
         col1, col2 = st.columns(2)
@@ -48,8 +55,8 @@ def render_info_module():
             st.write(f"• Total: {input_tokens + output_tokens:,}")
         with col2:
             st.write("Estimated Cost:")
-            st.write(f"${cost:.4f}")
-            
+            st.write(f"${cost:.6f}")
+
         # Add last update timestamp if available
         if "last_query_time" in st.session_state:
             st.markdown("---")

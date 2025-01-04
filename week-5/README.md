@@ -3,7 +3,7 @@ This week is focusing on practical introduction of a RAG concept: Retrieval Augm
 
 There are two main building blocks that you will work with:
 1. [Jupyter notebook](00_simple_local_rag.ipynb)
-2. [Streamlit UI](pdf_rag_ui.py), which implements the same functionality in a form of an interactive UI
+2. [Streamlit UI](RAG-GUI.py), which implements the same functionality in a form of an interactive UI
 
 This notebook and code were tested with Python 3.12
 

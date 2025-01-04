@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-from src.memoryrag import MemoryRAG
+from src.modules import MemoryRAG
 
 
 def test_memory_types():
