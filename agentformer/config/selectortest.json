@@ -1,0 +1,17 @@
+[
+[
+"HR services and processes", "hr-assistant.json"
+],
+[
+"Communications services and processes", "media-html.json"
+],
+[
+"Intranet services and Flamma", "flamma-rag2.json"
+],
+[
+"Pharma assistant", "pharma-html.json"
+],
+[
+"Generate a new service", "generator.json"    
+]
+]

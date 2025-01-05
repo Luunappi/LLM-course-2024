@@ -1,0 +1,266 @@
+[
+  {
+    "command": "INPUT",
+    "event": "patient_context",
+    "anchor": "patient_context_details",
+    "state": "init",
+    "text": "Please provide the patient's relevant information (e.g., age, gender, known allergies, and any existing medical conditions)."
+  },
+  {
+    "command": "BUTTON",
+    "state": "init",
+    "prompt": "Analyze the following patient context for completeness and clarity:\n{patient_context_details}\n\nCriteria:\n- Is the patient's age and gender provided?\n- Are known allergies stated?\n- Are relevant medical conditions mentioned?\n\nIf insufficient, suggest what additional info is needed.",
+    "text": "Check Quality of Patient Context",
+    "anchor": "patient_context_quality_check",
+    "scope": "patient_context_details",
+    "setstate": "patient_context_check_state"
+  },
+  {
+    "command": "CONDITION",
+    "prompt": "Does the patient context meet the criteria for completeness and clarity?",
+    "scope": "patient_context_quality_check",
+    "anchor": "patient_context_decision",
+    "state": "patient_context_check_state",
+    "setstate": "patient_context_final_ok_state",
+    "setstate-failure": "patient_context_retry_state"
+  },
+  {
+    "command": "HTML",
+    "html": "<div style='padding: 15px; margin: 10px; border: 2px solid #cc6666; border-radius: 5px; font-family: Arial; background-color: #ffecec;'>\n  <strong style='color: #cc0000;'>It appears some details are missing or unclear.</strong>\n  <p>Please provide any missing information (e.g., age, gender, known allergies, and relevant medical conditions).</p>\n</div>",
+    "state": "patient_context_retry_state"
+  },
+  {
+    "command": "INPUT",
+    "event": "patient_context_retry",
+    "anchor": "patient_context_details",
+    "state": "patient_context_retry_state",
+    "text": "Please re-enter the patient's details with the requested information."
+  },
+  {
+    "command": "BUTTON",
+    "state": "patient_context_retry_state",
+    "prompt": "Re-check the revised patient context:\n{patient_context_details}\n\nAre all necessary details now provided?",
+    "text": "Re-Check Quality of Patient Context",
+    "anchor": "patient_context_quality_recheck",
+    "scope": "patient_context_details",
+    "setstate": "patient_context_check_state_2"
+  },
+  {
+    "command": "CONDITION",
+    "prompt": "Is the revised patient context now acceptable?",
+    "scope": "patient_context_quality_recheck",
+    "anchor": "patient_context_redecision",
+    "state": "patient_context_check_state_2",
+    "setstate": "patient_context_final_ok_state",
+    "setstate-failure": "patient_context_retry_state"
+  },
+  {
+    "command": "HTML",
+    "html": "<div style='padding: 15px; margin: 10px; border: 2px solid #66cc66; border-radius: 5px; font-family: Arial; background-color: #ecffec;'>\n  <strong style='color: #008000;'>The patient context is now sufficient.</strong>\n  <p>Proceeding with the next step...</p>\n</div>",
+    "state": "patient_context_final_ok_state"
+  },
+
+
+  {
+    "command": "INPUT",
+    "event": "prescription_details",
+    "anchor": "prescription_input",
+    "state": "patient_context_final_ok_state",
+    "text": "Enter the details of the prescription to be analyzed, including the medication name(s), dosage, and any instructions from the prescriber."
+  },
+  {
+    "command": "BUTTON",
+    "state": "patient_context_final_ok_state",
+    "prompt": "Analyze the following prescription details for completeness and clarity:\n{prescription_input}\n\nCriteria:\n- Medication name(s) provided?\n- Dosage specified?\n- Prescribing instructions clear?\n\nIf insufficient, suggest what additional info is needed.",
+    "text": "Check Quality of Prescription Details",
+    "anchor": "prescription_quality_check",
+    "scope": "prescription_input",
+    "setstate": "prescription_check_state"
+  },
+  {
+    "command": "CONDITION",
+    "prompt": "Do the prescription details meet the criteria for completeness and clarity?",
+    "scope": "prescription_quality_check",
+    "anchor": "prescription_decision",
+    "state": "prescription_check_state",
+    "setstate": "prescription_final_ok_state",
+    "setstate-failure": "prescription_retry_state"
+  },
+  {
+    "command": "HTML",
+    "html": "<div style='padding: 15px; margin: 10px; border: 2px solid #cc6666; border-radius: 5px; font-family: Arial; background-color: #ffecec;'>\n  <strong style='color: #cc0000;'>Some prescription details are missing or unclear.</strong>\n  <p>Please provide the missing information (e.g., full medication name(s), exact dosage, and clear instructions).</p>\n</div>",
+    "state": "prescription_retry_state"
+  },
+  {
+    "command": "INPUT",
+    "event": "prescription_retry",
+    "anchor": "prescription_input",
+    "state": "prescription_retry_state",
+    "text": "Please re-enter the prescription details with the requested information."
+  },
+  {
+    "command": "BUTTON",
+    "state": "prescription_retry_state",
+    "prompt": "Re-check the revised prescription details:\n{prescription_input}\n\nAre all necessary details now provided?",
+    "text": "Re-Check Quality of Prescription Details",
+    "anchor": "prescription_quality_recheck",
+    "scope": "prescription_input",
+    "setstate": "prescription_check_state_2"
+  },
+  {
+    "command": "CONDITION",
+    "prompt": "Are the revised prescription details now acceptable?",
+    "scope": "prescription_quality_recheck",
+    "anchor": "prescription_redecision",
+    "state": "prescription_check_state_2",
+    "setstate": "prescription_final_ok_state",
+    "setstate-failure": "prescription_retry_state"
+  },
+  {
+    "command": "HTML",
+    "html": "<div style='padding: 15px; margin: 10px; border: 2px solid #66cc66; border-radius: 5px; font-family: Arial; background-color: #ecffec;'>\n  <strong style='color: #008000;'>The prescription details are now sufficient.</strong>\n  <p>Proceeding with the next step...</p>\n</div>",
+    "state": "prescription_final_ok_state"
+  },
+
+
+  {
+    "command": "INPUT",
+    "event": "otc_products",
+    "anchor": "otc_details",
+    "state": "prescription_final_ok_state",
+    "text": "List any over-the-counter (OTC) products the patient is currently taking or considering. Include product names, active ingredients, and usage instructions if known."
+  },
+  {
+    "command": "BUTTON",
+    "state": "prescription_final_ok_state",
+    "prompt": "Analyze the following OTC details for completeness and clarity:\n{otc_details}\n\nCriteria:\n- Product names provided?\n- Active ingredients identified?\n- Usage instructions available or at least partially stated?\n\nIf insufficient, suggest what additional info is needed.",
+    "text": "Check Quality of OTC Details",
+    "anchor": "otc_quality_check",
+    "scope": "otc_details",
+    "setstate": "otc_check_state"
+  },
+  {
+    "command": "CONDITION",
+    "prompt": "Do the OTC product details meet the criteria for completeness and clarity?",
+    "scope": "otc_quality_check",
+    "anchor": "otc_decision",
+    "state": "otc_check_state",
+    "setstate": "otc_final_ok_state",
+    "setstate-failure": "otc_retry_state"
+  },
+  {
+    "command": "HTML",
+    "html": "<div style='padding: 15px; margin: 10px; border: 2px solid #cc6666; border-radius: 5px; font-family: Arial; background-color: #ffecec;'>\n  <strong style='color: #cc0000;'>Some OTC details are missing or unclear.</strong>\n  <p>Please provide the missing information (e.g., full product names, known active ingredients, and usage instructions).</p>\n</div>",
+    "state": "otc_retry_state"
+  },
+  {
+    "command": "INPUT",
+    "event": "otc_retry",
+    "anchor": "otc_details",
+    "state": "otc_retry_state",
+    "text": "Please re-enter the OTC product details with the requested information."
+  },
+  {
+    "command": "BUTTON",
+    "state": "otc_retry_state",
+    "prompt": "Re-check the revised OTC details:\n{otc_details}\n\nAre all necessary details now provided?",
+    "text": "Re-Check Quality of OTC Details",
+    "anchor": "otc_quality_recheck",
+    "scope": "otc_details",
+    "setstate": "otc_check_state_2"
+  },
+  {
+    "command": "CONDITION",
+    "prompt": "Are the revised OTC product details now acceptable?",
+    "scope": "otc_quality_recheck",
+    "anchor": "otc_redecision",
+    "state": "otc_check_state_2",
+    "setstate": "otc_final_ok_state",
+    "setstate-failure": "otc_retry_state"
+  },
+  {
+    "command": "HTML",
+    "html": "<div style='padding: 15px; margin: 10px; border: 2px solid #66cc66; border-radius: 5px; font-family: Arial; background-color: #ecffec;'>\n  <strong style='color: #008000;'>The OTC details are now sufficient.</strong>\n  <p>Proceeding with the analysis...</p>\n</div>",
+    "state": "otc_final_ok_state"
+  },
+
+  {
+    "command": "HTML",
+    "state": "otc_final_ok_state",
+    "html": "<div style='padding: 15px; margin: 10px; border: 2px solid #6699cc; border-radius: 5px; font-family: Arial; background-color: #eef7ff;'>\n  <strong>Thank you.</strong>\n  <p>We will now review and analyze the provided prescription and OTC product details in conjunction with the patient's context.</p>\n</div>"
+  },
+  {
+    "command": "BUTTON",
+    "state": "otc_final_ok_state",
+    "prompt": "Given the following information:\n- Patient Context: {patient_context_details}\n- Prescription Details: {prescription_input}\n- OTC Products: {otc_details}\n\nCheck for:\n1. Potential drug-drug interactions\n2. Appropriateness of the prescribed therapy\n3. Potential issues related to patient allergies or conditions\n4. Possible need for dosage adjustments\n5. Any conflicts with the listed OTC products\n\nUse EXT (external data) to reference up-to-date pharmacological guidelines, known drug interactions, recommended dosages, and contraindications.\n\nSummarize any identified concerns or confirm if the prescription and OTC items are suitable as is.",
+    "text": "Analyze Prescription and OTC Products",
+    "anchor": "analysis_results",
+    "scope": "patient_context_details prescription_input otc_details",
+    "setstate": "analysis_state"
+  },
+  {
+    "command": "HTML",
+    "scope": "analysis_results",
+    "state": "analysis_state",
+    "html": "<div style='padding: 15px; margin: 10px; border: 2px dashed #6666cc; border-radius: 5px; font-family: Arial; background-color: #f8f8ff;'>\n  <h3 style='color: #3333cc;'>Analysis Complete</h3>\n  <p>{analysis_results}</p>\n  <p>The system has identified any potential issues or confirmed that the current regimen is appropriate.</p>\n</div>"
+  },
+  {
+    "command": "CONDITION",
+    "prompt": "Does the analysis indicate any concerns or necessary adjustments?",
+    "scope": "analysis_results",
+    "anchor": "adjustment_decision",
+    "state": "analysis_state",
+    "setstate": "adjustment_state",
+    "setstate-failure": "no_adjustment_state"
+  },
+  {
+    "command": "HTML",
+    "html": "<div style='padding: 15px; margin: 10px; border: 2px solid #cc6666; border-radius: 5px; font-family: Arial; background-color: #ffecec;'>\n  <strong style='color: #cc0000;'>The analysis indicates that adjustments are recommended.</strong>\n</div>",
+    "state": "adjustment_state"
+  },
+  {
+    "command": "BUTTON",
+    "prompt": "Based on the identified issues:\n{analysis_results}\n\nProvide clear recommendations for the pharmacist. Include:\n- Suggested changes to the prescription (if any)\n- Advising alternative or safer OTC options\n- Additional counseling points for the patient\n\nUse EXT sources for confirming best practices.",
+    "text": "Recommend Adjustments and Alternatives",
+    "anchor": "recommendation_details",
+    "scope": "analysis_results",
+    "state": "adjustment_state",
+    "setstate": "final_recommendation_state"
+  },
+  {
+    "command": "HTML",
+    "state": "final_recommendation_state",
+    "scope": "recommendation_details",
+    "html": "<div style='padding: 15px; margin: 10px; border: 2px solid #006600; border-radius: 5px; font-family: Arial; background-color: #ecffec;'>\n  <strong style='color: #006600;'>Recommended Adjustments & Patient Counseling</strong>\n  <p>{recommendation_details}</p>\n  <p>These recommendations should address the issues identified during the analysis.</p>\n</div>"
+  },
+  {
+    "command": "HTML",
+    "html": "<div style='padding: 15px; margin: 10px; border: 2px solid #66cc66; border-radius: 5px; font-family: Arial; background-color: #ecffec;'>\n  <strong style='color: #008000;'>No adjustments are necessary.</strong>\n  <p>The prescription and OTC products appear appropriate. Proceed with confirming patient counseling.</p>\n</div>",
+    "scope": "adjustment_decision",
+    "state": "no_adjustment_state"
+  },
+  {
+    "command": "BUTTON",
+    "prompt": "Since no adjustments are required, provide a brief summary of reassurance and any general patient counseling tips to ensure adherence and proper medication use.\n\nUse EXT references for best patient communication practices.",
+    "text": "Provide Patient Counseling and Confirmation",
+    "anchor": "no_adjustment_summary",
+    "scope": "analysis_results",
+    "state": "no_adjustment_state",
+    "setstate": "final_state"
+  },
+  {
+    "command": "HTML",
+    "state": "final_state",
+    "scope": "no_adjustment_summary",
+    "html": "<div style='padding: 15px; margin: 10px; border: 2px solid #6699cc; border-radius: 5px; font-family: Arial; background-color: #eef7ff;'>\n  <strong>Patient Counseling Summary</strong>\n  <p>{no_adjustment_summary}</p>\n  <p>This confirms the current regimen is safe and appropriate.</p>\n</div>"
+  },
+  {
+    "command": "BUTTON",
+    "state": "final_state",
+    "prompt": "",
+    "text": "Start again",
+    "anchor": "",
+    "scope": "",
+    "setstate": "init"
+  }
+]

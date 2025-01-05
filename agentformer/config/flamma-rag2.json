@@ -1,0 +1,12 @@
+{
+    "name": "flamma-rag2",
+    "type": "rag-config",
+    "embeddings": {
+        "model": "text-embedding-ada-002",
+        "dimensions": 1536
+    },
+    "retrieval": {
+        "method": "cosine",
+        "top_k": 3
+    }
+} 

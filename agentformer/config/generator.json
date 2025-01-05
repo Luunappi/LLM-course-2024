@@ -1,0 +1,321 @@
+[
+  {
+    "command": "STORE",
+    "state": "init",
+    "anchor": "instructions",
+    "text": "
+1. **UI Generation and Command Usage**  
+   - **We now generate a UI** by examining the input structure and placing elements on screens.  
+   - The UI is composed of **INPUT**, **LLM-QUERY**, **TEXT**, and **HTML** commands grouped by **state**.  
+   - Each **INPUT** operation must include a 'text' label that clearly explains what data is being requested and why it is significant.  
+   - Each **LLM-QUERY** operation is rendered as a button or action command; it must have a 'text' label indicating the purpose or function of the query.  
+   - **TEXT** operations place informative text fields in the processing flow.  
+     - Use them to guide or instruct the user, referencing scope content with '{}' if needed.  
+   - **HTML** commands also place content in a pane, but can contain richer formatting. Provide helpful instructions and guidance within the HTML.
+
+2. **State Management & Screens**  
+   - Commands with the **same 'state'** are presented on the **same screen**.  
+   - The **default state** is 'init'. The first UI screen elements go in 'init'.  
+   - **STATE TRANSITIONS** must move from one state to another using 'setstate'. There can be no 'setstate' without eventually transitioning to that new state.  
+   - Do not change state prematurely; only do so after necessary processing in the current state is complete.  
+
+3. **Command and Parameter Rules**  
+   - **INPUT**: 'event anchor text state setstate'  
+   - **SUBSCRIBE**: 'event anchor text state setstate'  
+   - **UNSUBSCRIBE**: 'event state setstate'  
+   - **LOAD**: 'file/anchor' (loads a new agent, keeps memory, resets state)  
+   - **RETRIEVE**: 'url anchor state setstate'  
+   - **SELECTOR**: 'items state anchor text':  
+   - **STORE**: 'text anchor state setstate scope'
+   - **CODE**: 'code anchor scope state setstate'
+   - **TEXT**: 'text [scope if needed] state' (displays a text box, no 'setstate') 
+   - **EMBEDDING**:  'file anchor state setstate'
+   - **HTML**: 'html [scope if needed] state' (displays an HTML pane, no 'setstate')  
+   - **CONDITION**: 'prompt scope anchor state setstate setstate-failure'  
+   - **LLM-QUERY**: 'prompt text anchor scope state setstate [model]'  
+   - **STATE MANAGEMENT**:  
+     - 'state': the activation state. Default is 'init'.  
+     - 'setstate': the new state after command execution.  
+
+4. **Scopes and Anchors**  
+   - **Scopes** reference data from one or more **anchors**.  
+   - RAG can be performed by rag element indicating rag prompt, topk for number of elements, and embedding in the original prompt in curly braces.
+   - RAG needs a preamble (init stage) loading of embeddings, see example
+   - **Anchor writes** replace content; avoid partial writes.  
+   - Use **intermediate anchors** to store or analyze data if needed.  
+   - Reference anchor data in **prompts** or **TEXT/HTML** via curly braces, e.g. '{some_anchor}'.  
+
+5. **Behavioral Notes**  
+   - **Use step‐by‐step reasoning** in your script generation to ensure correctness, but the **final output** must be **only** the JSON commands.  
+   - Collect relevant tasks or screens into the same state to form a cohesive UI “page.”  
+## 1. **Simple Input → Display**
+
+'''json
+[
+  {
+    'command': 'INPUT',
+    'event': 'user_input',
+    'anchor': 'input_data',
+    'text': 'Enter any text here:'
+  },
+  {
+    'command': 'TEXT',
+    'text': 'You entered:{input_data}',
+    'scope': 'input_data'
+  }
+]
+'''
+**Pattern:**  
+- **INPUT** captures user data in 'input_data'.  
+- **TEXT** displays the result, referencing the 'scope' anchor.
+
+---
+
+## 2. **Conditional Check**
+
+'''json
+[
+  {
+    'command': 'INPUT',
+    'event': 'user_cmd',
+    'anchor': 'cmd_data',
+    'text': 'Type 'yes' or 'no':'
+  },
+  {
+    'command': 'CONDITION',
+    'prompt': 'Is cmd_data == 'yes'? ',
+    'scope': 'cmd_data',
+    'anchor': 'cond_result',
+    'setstate': 'yes_state',
+    'setstate-failure': 'no_state'
+  },
+  {
+    'command': 'TEXT',
+    'state': 'yes_state',
+    'text': 'You typed 'yes'.'
+  },
+  {
+    'command': 'TEXT',
+    'state': 'no_state',
+    'text': 'You typed something else.'
+  }
+]
+'''
+**Pattern:**  
+- **CONDITION** checks input, then branches to 'yes_state' or 'no_state'.
+
+---
+
+## 3. **LLM Query**
+
+'''json
+[
+  {
+    'command': 'INPUT',
+    'event': 'ask_query',
+    'anchor': 'question',
+    'text': 'What do you want to ask the LLM?'
+  },
+  {
+    'command': 'LLM-TRIGGER',
+    “event”:”ask_query”,
+    'prompt': 'Please answer the following question: {question}',
+    'scope': 'question',
+    'anchor': 'llm_answer'
+  },
+  {
+    'command': 'TEXT',
+    'text': 'The LLM says: {llm_answer}',
+    'scope': 'llm_answer'
+  }
+]
+'''
+**Pattern:**  
+- **LLM-TRIGGER** uses user input in 'question' to generate a response in 'llm_answer'.
+
+---
+
+## 4. **CODE Integration**
+
+'''json
+[
+  {
+    'command': 'INPUT',
+    'event': 'numbers_input',
+    'anchor': 'nums',
+    'text': 'Enter comma-separated numbers:',
+    “state”:”init”,
+    “setstate”:”next”
+  },
+  {
+    'command': 'CODE',
+    'code': (
+      'def main_function(nums):\n'
+      '    arr = [int(n.strip()) for n in nums.split(',')]\n'
+      '    s = sum(arr)\n'
+      '    return {'sum': s}'
+    ),
+    'scope': 'nums',
+    “state”:”next”
+    'anchor': 'calc_result'
+  },
+  {
+    'command': 'TEXT',
+    'text': 'The sum is {calc_result}.',
+    “state”:”next”
+    'scope': 'calc_result'
+  }
+]
+'''
+**Pattern:**  
+- **CODE** runs inline Python, producing a dictionary result in 'calc_result'.  
+- **TEXT** displays the sum.
+
+---
+
+## 5. **HTML Output**
+
+'''json
+[
+  {
+    'command': 'INPUT',
+    'event': 'short_bio',
+    'anchor': 'bio',
+    'text': 'Describe yourself in one sentence:'
+    “state”:”init”,
+    “setstate”:”next”
+
+  },
+  {
+    'command': 'HTML',
+    'html': '<h2>Profile</h2><p>{bio}</p><p>{additional_data}</p>',
+    'scope': 'bio additional_data',
+    “state”:”next”,
+
+  }
+]
+'''
+**Pattern:**  
+- **HTML** inserts anchor data ('bio') into an HTML template for nicer formatting.
+
+
+## 6. Feedback loop with CONDITION and state management
+[
+ {
+        'command': 'LLM-QUERY',
+        'prompt': 'Generate a JSON script with the given specification script language to generate the desired application script. The script is expected to be a set of LLM-QUERY operations generating the modules and CONDITION elements for verifying the scripts. Ensure the script has well-defined entry (init state) and exit points and all states are reachable. Document exit states. Each module is stored in a separate anchor. Init module is loaded first and it will load other modules. Each module starts from the init stage and has access to the anchors carrying application state. Previous verifier feedback (if any): {verifier_feedback}.   “,
+        'anchor': “content_for_verification”,
+        'scope': “input verifier_feedback',
+        'state': “current_state”, 
+        'setstate': “next_state”
+    },
+ {
+    'command': 'CONDITION',
+    'prompt': 'Does the input meet the given criteria. Criteria here. Verified feedback (if any): {verifier_feedback}. Content for verification: {content_for_verification} ”,
+    'scope': “content_for_verification verifier_feedback',
+    'anchor': “verifier_feedback”,
+    'state': 'next_state',
+    'setstate': 'decision_state',
+    'setstate-failure': 'current_state'
+  }
+  ]
+  7. SELECTION OF ITEMS
+  [ 
+    {
+    'command': 'SELECTOR',
+    'state': 'init',
+    'text': 'Please select an item from the list:',
+    'items': [
+      { 'id': 'doc1', 'text': 'First document', 'state':'doc1'},
+      { 'id': 'doc2', 'text': 'Second document', 'state':'doc2'} 
+    ],
+    'anchor': 'list-selection'
+  },
+  {
+    'command': 'TEXT',
+    'text': 'Doc1 was chosen.',
+    'state': 'doc1'
+  },
+  {
+    'command': 'TEXT',
+    'text': 'Doc2 was chosen.',
+    'state': 'doc2'
+  }
+]
+  "
+},
+  {
+    "command": "INPUT",
+    "event": "company_data",
+    "anchor": "company_data_anchor",
+    "text": "Please input the application idea and company data to generate a generative application script.",
+    "state": "init",
+    "setstate": "module_gen"
+  },
+  {
+    "command": "LLM-QUERY",
+    "prompt": "
+      Goal: We have an application that needs to be built in the simple generative script language. 
+      Application goal: {company_data_anchor}.
+      Your TASK is to design and generate an application script.
+      Address the application requirements and ENSURE all important features are to be generated. 
+      ENSURE THAT APPLICATION REQUIREMENTS ARE INCLUDED IN THE PROMPTS.
+We want to split the application into multiple functional modules, each with its own states, anchors, and commands, but using a shared anchor structure for data continuity. At the end, we want a final integration script that stitches these modules together, ensuring we have a complete, running application.
+1. Analyze the Application Requirements
+Based on the description I provide (or any given context), decide which modules are needed (e.g., input collection, data fetching, analysis, UI rendering, etc.).
+2. Generate Modules
+For each module write the script (commands) that generates the functionality of that module using the script language.
+Define the anchors (data structures) it reads or writes.
+Limit any reactive elements (SUBSCRIBE, TRIGGER) to the module itself.
+Use UI related commands (INPUT, BUTTON, TEXT, HTML) when necessary.
+Provide a clear final state or condition that indicates this module is done.
+3. Output Format
+Return each module’s script as valid JSON.
+4. Clarity
+Keep the scripts succinct, but ensure each module is functional on its own.
+If additional logic is needed (e.g., conditional checks, LLM queries, Python CODE blocks), provide minimal yet illustrative examples.
+Please follow these steps to produce a multi-module solution, culminating in a final integrated script. Make sure the anchors and states are consistent across modules.
+ENSURE that ALL the required application features are present in the prompts. PROVIDE EXAMPLES in the prompts.
+Example generative script (FOLLOW THE PATTERNS): {instructions}.
+",
+    "anchor": "designs_initial_anchor",
+    "scope": "company_data_anchor instructions",
+    "model": "ollama/llama3.3",
+    "state": "module_gen",
+    "setstate": "design_generation"
+  },
+  {
+    "command": "LLM-QUERY",
+    "prompt": "Finalize a JSON script using the provided specification language to generate the desired application using clever LLM prompts. The generated script should:
+1) Include LLM-QUERY and optional CONDITION commands for verification in sequence to generate the application modules.
+2) Store each module in a separate anchor.
+3) Use consistent anchors so all modules have access to shared application data.
+4) Ensure that ALL anchors will receive data, from previous processes or from INPUT.
+Application goal: {company_data_anchor}.
+Generated initial design that you need to DEEPEN: {designs_initial_anchor}
+Verifier feedback to consider (if any): {verifier_feedback}.
+IMPORTANT: The output should be sequence of LLM-QUERY and CONDITION elements. OUTPUT ONLY CONTINUOUS JSON.
+ENSURE that ALL the required application features are present in the prompts. 
+",
+    "anchor": "designs_anchor",
+    "scope": "company_data_anchor designs_initial_anchor verifier_feedback instructions",
+    "model": "ollama/llama3.3",
+    "state": "design_generation",
+    "setstate": "design_generation2"
+  },
+  {
+    "command": "CONDITION",
+    "prompt": "Does the newly generated multi-module script meet the original requirements? Check correctness of state management, use of LLM-QUERY, CONDITION commands, and exit states. Specification: {company_data_anchor}. Generated script: {designs_anchor}. Instructions: {instructions}",
+    "scope": "company_data_anchor designs_anchor instructions",
+    "anchor": "release_decision",
+    "model": "ollama/llama3.3",
+    "state": "design_generation2",
+    "setstate": "decision_state",
+    "setstate-failure": "module_gen"
+  },
+  {
+    "command": "TEXT",
+    "text": "Creation completed successfully! The script is ready for use.",
+    "state": "decision_state"
+  }
+]
