@@ -99,6 +99,23 @@ agentformer/
 
 ## Arkkitehtuuri
 
+### Työkalut
+
+Järjestelmä käyttää modulaarista työkaluarkkitehtuuria:
+
+- **ModelTool**: Mallien hallinta ja konfigurointi
+- **ChatTool**: Keskustelun hallinta ja vastausten generointi
+- **TokenTool**: Token-käytön seuranta ja laskenta
+- **SystemTool**: Järjestelmän suorituskyvyn monitorointi
+- **RAGTool**: Dokumenttipohjainen tiedonhaku
+- **PromptTool**: Promptien hallinta
+
+Jokainen työkalu:
+- On singleton-instanssi
+- Vastaa yhdestä selkeästä toiminnallisuudesta
+- Voidaan testata itsenäisesti
+- Voidaan konfiguroida erikseen
+
 AgentFormer on rakennettu kerroksittaiseksi järjestelmäksi, jossa Orchestrator toimii keskeisenä koordinaattorina kaikkien komponenttien välillä. Message Bus -järjestelmä mahdollistaa asynkronisen viestinvälityksen eri moduulien välillä, mikä tekee järjestelmästä skaalautuvan ja joustavan. Memory Manager ylläpitää kolmitasoista muistia (työmuisti, episodinen muisti ja semanttinen muisti), mikä mahdollistaa kontekstin säilymisen ja aiempien keskustelujen hyödyntämisen. Työkalumoduulit (Tools) ovat itsenäisiä komponentteja, jotka voidaan dynaamisesti ladata ja poistaa käytöstä tarpeen mukaan. Web-käyttöliittymä on toteutettu Flaskilla ja se kommunikoi Orchestratorin kanssa REST-rajapinnan kautta.
 
 1. **Orchestrator**  

@@ -10,9 +10,9 @@ from typing import Any, Optional, Dict
 from memory.memory_manager import MemoryManager
 from tools.diagram_tool import DiagramTool
 from core.messaging import MessageBus, EventType, Message
-from ui_components.model_module import Models
 from tools.prompt_tool import PromptTool
 from tools.model_tool import ModelTool
+from tools.chat_tool import ChatTool
 
 # DEBUG: Konfiguroi debug-loggaus
 logger = logging.getLogger(__name__)
@@ -35,9 +35,9 @@ class AgentFormerOrchestrator:
             self.memory = MemoryManager()
             self.tools = {}
             self.current_state = {}
-            self.models = Models()
             self.prompt_tool = PromptTool()
             self.model_tool = ModelTool()
+            self.chat_tool = ChatTool()
 
             # Rekisteröi perusviestien käsittelijät
             self._register_message_handlers()
@@ -79,64 +79,43 @@ class AgentFormerOrchestrator:
             self.message_bus.subscribe(f"{name}_{capability}", tool.handle_capability)
 
     def process_request(self, mode: str, params: dict) -> dict:
-        """Process request and return response dictionary"""
+        """Process request and return response"""
         try:
-            # Valitse sopiva malli tehtävätyypin mukaan
-            model_name = self.model_tool.get_model_for_task(mode)
-            model_config = self.model_tool.get_model_config(model_name)
+            start_time = time.time()
+            logger.debug(f"Aloitetaan pyynnön käsittely: {mode}")
 
-            # Käytä mallia prosessointiin...
+            # Valitse malli
+            model_name = self.model_tool.get_model_for_task(mode)
+            logger.debug(f"Valittu malli: {model_name}")
+
+            # Hae mallin konfiguraatio
+            model_config = self.model_tool.get_model_config(model_name)
+            logger.debug(
+                f"Mallin konfiguraatio haettu: {time.time() - start_time:.2f}s"
+            )
+
+            # Käsittele pyyntö
             response = self.message_bus.publish(mode, params)
-            if isinstance(response, str):
-                return {
-                    "response": response,
-                    "input_tokens": len(params.get("message", "")),
-                    "output_tokens": len(response),
-                    "total_tokens": len(params.get("message", "")) + len(response),
-                }
+            logger.debug(
+                f"Vastaus saatu message busilta: {time.time() - start_time:.2f}s"
+            )
+
             return response
+
         except Exception as e:
-            logger.error(f"Error processing request: {e}")
-            return {"error": str(e)}
+            logger.error(f"Virhe pyynnön käsittelyssä: {e}")
+            raise
 
     def _handle_chat(self, message: Message):
         """Handle chat requests"""
         try:
-            user_input = message.data.get("message", "")
-            if not user_input:
-                return {"response": "Tyhjä viesti, kirjoita jotain"}
-
-            # Hae konteksti muistista
-            context = None
-            try:
-                memories = self.memory.retrieve_memories(user_input)
-                if memories:
-                    context = "\n".join(str(m["content"]) for m in memories)
-            except Exception as mem_error:
-                logger.error(f"Error retrieving context: {mem_error}")
-
-            # Generoi vastaus
-            response = self.models.generate_response(user_input, context)
-
-            # Tallenna vastaus muistiin
-            try:
-                self.memory.store_memory(
-                    {"content": f"{user_input} -> {response}"}, memory_type="episodic"
-                )
-            except Exception as mem_error:
-                logger.error(f"Error storing response: {mem_error}")
-
-            # Palauta vastaus sanakirjana
-            return {
-                "response": response,
-                "input_tokens": len(user_input),
-                "output_tokens": len(response),
-                "total_tokens": len(user_input) + len(response),
-            }
-
+            logger.debug(f"[ORCH] Handling chat message in _handle_chat: {message}")
+            response = self.chat_tool.generate_response(message.data["message"])
+            logger.debug(f"[ORCH] Chat tool response: {response}")
+            return response
         except Exception as e:
-            logger.error(f"Chat error: {e}")
-            return {"error": f"Virhe viestin käsittelyssä: {str(e)}"}
+            logger.error(f"[ORCH] Error in chat handler: {e}", exc_info=True)
+            return {"error": str(e)}
 
     def _handle_rag(self, message: Message):
         """Handle RAG requests"""
@@ -182,7 +161,7 @@ class AgentFormerOrchestrator:
             "memory_state": self.memory.get_memory_state() if self.memory else None,
             "active_tools": list(self.tools.keys()),
             "current_state": self.current_state,
-            "current_model": self.models.get_current_model(),
+            "current_model": self.model_tool.get_current_model(),
         }
 
     def get_memory_state(self) -> Dict:
@@ -265,3 +244,37 @@ class AgentFormerOrchestrator:
     def set_tool_selection_prompt(self, content: str) -> bool:
         """Set new tool selection prompt"""
         return self.prompt_tool.set_prompt("tool", content)
+
+    def _get_context(self, user_input: str) -> Optional[str]:
+        """Get context from memory for given input"""
+        try:
+            memories = self.memory.retrieve_memories(user_input)
+            if memories:
+                return "\n".join(str(m["content"]) for m in memories)
+            return None
+        except Exception as e:
+            logger.error(f"Error retrieving context: {e}")
+            return None
+
+    def process_message(self, message: str) -> str:
+        """Process incoming message and return response"""
+        try:
+            logger.debug(f"[ORCH] Processing message: {message}")
+
+            msg = Message(EventType.CHAT_MESSAGE, {"message": message})
+            logger.debug(f"[ORCH] Created Message object: {msg}")
+
+            response = self._handle_chat(msg)
+            logger.debug(f"[ORCH] Got response from _handle_chat: {response}")
+
+            if isinstance(response, dict):
+                result = response.get("response", "En ymmärtänyt viestiäsi.")
+            else:
+                result = response
+
+            logger.debug(f"[ORCH] Final formatted response: {result}")
+            return result
+
+        except Exception as e:
+            logger.error(f"[ORCH] Error processing message: {e}", exc_info=True)
+            return "Pahoittelen, viestin käsittelyssä tapahtui virhe."

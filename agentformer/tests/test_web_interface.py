@@ -25,7 +25,7 @@ def test_index_page(client):
     """Test main page load"""
     response = client.get("/")
     assert response.status_code == 200
-    assert b"html" in response.data
+    assert b"chat.html" in response.data
 
 
 def test_chat_endpoint(client):
