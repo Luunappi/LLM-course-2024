@@ -103,16 +103,53 @@ class ChatTool:
 
     def _update_history(self, prompt: str, response: str) -> None:
         """Update conversation history"""
-        self.conversation_history.append({"role": "user", "content": prompt})
-        self.conversation_history.append({"role": "assistant", "content": response})
+        message_id = (
+            len(self.conversation_history) // 2
+        )  # Generate unique ID for message pair
+        self.conversation_history.append(
+            {"role": "user", "content": prompt, "message_id": message_id}
+        )
+        self.conversation_history.append(
+            {"role": "assistant", "content": response, "message_id": message_id}
+        )
 
         # Rajoita historian kokoa
         if len(self.conversation_history) > 20:
             self.conversation_history = self.conversation_history[-20:]
 
-    def clear_history(self) -> None:
-        """Clear conversation history"""
-        self.conversation_history = []
+    def delete_message(self, message_id: int) -> bool:
+        """Delete specific message pair from history
+
+        Args:
+            message_id: ID of the message pair to delete
+
+        Returns:
+            bool: True if message was deleted, False if not found
+        """
+        try:
+            # Find and remove both user and assistant messages with matching ID
+            self.conversation_history = [
+                msg
+                for msg in self.conversation_history
+                if msg.get("message_id") != message_id
+            ]
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting message {message_id}: {e}")
+            return False
+
+    def clear_history(self) -> bool:
+        """Clear conversation history
+
+        Returns:
+            bool: True if history was cleared successfully
+        """
+        try:
+            self.conversation_history = []
+            return True
+        except Exception as e:
+            logger.error(f"Error clearing history: {e}")
+            return False
 
     def _build_messages(
         self, prompt: str, context: Optional[str] = None

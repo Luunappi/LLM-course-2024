@@ -69,18 +69,58 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function showToolInfo(tool) {
-        fetch(`/tool_info/${tool}`)
-            .then(response => response.json())
-            .then(data => {
+    async function showToolInfo(tool) {
+        const toolInfo = document.getElementById('tool-info');
+        
+        // Tokens-napin erikoiskäsittely
+        if (tool === 'Tokens') {
+            await showTokenInfo();
+            return;
+        }
+
+        // System-napin käsittely
+        if (tool === 'System') {
+            toolInfo.innerHTML = `
+                <div class="tool-content">
+                    <h3>System Settings</h3>
+                    <p>Current system prompt: ${await getSystemPrompt()}</p>
+                    <textarea id="system-prompt" rows="4" placeholder="Edit system prompt..."></textarea>
+                    <button onclick="updateSystemPrompt()">Update</button>
+                </div>
+            `;
+            toolInfo.classList.add('active');
+            return;
+        }
+
+        // Prompt-napin käsittely
+        if (tool === 'Prompt') {
+            toolInfo.innerHTML = `
+                <div class="tool-content">
+                    <h3>Prompt Templates</h3>
+                    <div class="prompt-templates">
+                        <button onclick="usePrompt('analysis')">Analysis Template</button>
+                        <button onclick="usePrompt('summary')">Summary Template</button>
+                        <button onclick="usePrompt('code')">Code Template</button>
+                    </div>
+                </div>
+            `;
+            toolInfo.classList.add('active');
+            return;
+        }
+
+        // Muiden työkalujen käsittely
+        try {
+            const response = await fetch(`/api/tool_info/${tool.toLowerCase()}`);
+            const data = await response.json();
+            if (data.info) {
                 toolInfo.innerHTML = `<h3>${tool}</h3><p>${data.info}</p>`;
                 toolInfo.classList.add('active');
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                toolInfo.innerHTML = `<h3>${tool}</h3><p>Error loading tool information</p>`;
-                toolInfo.classList.add('active');
-            });
+            }
+        } catch (error) {
+            console.error('Error loading tool info:', error);
+            toolInfo.innerHTML = `<h3>${tool}</h3><p>Error loading tool information</p>`;
+            toolInfo.classList.add('active');
+        }
     }
 
     function handleUpload() {
@@ -174,10 +214,22 @@ document.addEventListener('DOMContentLoaded', function() {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${role}`;
         
+        // Generoi uniikki ID viestille
+        const messageId = Date.now();
+        messageDiv.dataset.messageId = messageId;
+        
+        // Lisää poisto-nappi
+        if (role !== 'error') {
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'delete-message';
+            deleteButton.innerHTML = '×';
+            deleteButton.onclick = () => deleteMessage(messageId);
+            messageDiv.appendChild(deleteButton);
+        }
+        
         const contentDiv = document.createElement('div');
         contentDiv.className = 'message-content';
         
-        // Käytä innerHTML assistentin viesteille, textContent käyttäjän viesteille
         if (role === 'assistant') {
             contentDiv.innerHTML = content;
         } else {
@@ -188,6 +240,71 @@ document.addEventListener('DOMContentLoaded', function() {
         chatContent.appendChild(messageDiv);
         chatContent.scrollTop = chatContent.scrollHeight;
     }
+
+    // Lisää viestin poistamisen käsittely
+    async function deleteMessage(messageId) {
+        try {
+            const response = await fetch(`/api/chat/message/${messageId}`, {
+                method: 'DELETE'
+            });
+            const data = await response.json();
+            if (data.status === 'success') {
+                const messageElements = document.querySelectorAll(`[data-message-id="${messageId}"]`);
+                messageElements.forEach(el => el.remove());
+            }
+        } catch (error) {
+            console.error('Error deleting message:', error);
+        }
+    }
+
+    // Lisää historian tyhjennyksen käsittely
+    document.querySelector('.clear-history').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        
+        // Tarkista onko dialogi jo olemassa
+        let dialog = document.querySelector('.confirm-dialog');
+        if (!dialog) {
+            dialog = document.createElement('div');
+            dialog.className = 'confirm-dialog';
+            dialog.innerHTML = `
+                <div>Are you sure you want to delete all messages?</div>
+                <div class="confirm-dialog-buttons">
+                    <button class="confirm-button cancel">Cancel</button>
+                    <button class="confirm-button confirm">Delete</button>
+                </div>
+            `;
+            document.body.appendChild(dialog);
+            
+            // Lisää click handlerit napeille
+            dialog.querySelector('.confirm-button.confirm').onclick = async () => {
+                try {
+                    const response = await fetch('/api/chat/history', {
+                        method: 'DELETE'
+                    });
+                    const data = await response.json();
+                    if (data.status === 'success') {
+                        document.querySelector('.chat-content').innerHTML = '';
+                    }
+                } catch (error) {
+                    console.error('Error clearing history:', error);
+                }
+                dialog.classList.remove('show');
+            };
+            
+            dialog.querySelector('.confirm-button.cancel').onclick = () => {
+                dialog.classList.remove('show');
+            };
+            
+            // Sulje dialogi kun klikataan muualle
+            document.addEventListener('click', (e) => {
+                if (!dialog.contains(e.target) && !e.target.matches('.clear-history')) {
+                    dialog.classList.remove('show');
+                }
+            });
+        }
+        
+        dialog.classList.add('show');
+    });
 
     // Event listeners
     sendButton.addEventListener('click', sendMessage);
@@ -294,36 +411,88 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Lisää token-tietojen näyttö
     async function showTokenInfo() {
+        const toolInfo = document.getElementById('tool-info');
         try {
             const response = await fetch('/api/tokens/stats');
             const data = await response.json();
             
-            // Päivitä vain jos token-info on näkyvissä
-            if (toolInfo.classList.contains('active')) {
-                toolInfo.innerHTML = `
+            toolInfo.innerHTML = `
+                <div class="token-info">
                     <h3>Token Usage</h3>
-                    <div class="token-info">
-                        <p><b>Current Message:</b> ${data.current.total_tokens} tokens</p>
+                    <div class="current-usage">
+                        <h4>Current Message</h4>
                         <ul>
-                            <li>Input: ${data.current.input_tokens}</li>
-                            <li>Output: ${data.current.output_tokens}</li>
-                            <li>Cost: $${data.current.cost.toFixed(4)}</li>
+                            <li>Input: <b>${data.current.input_tokens || 0}</b> tokens</li>
+                            <li>Output: <b>${data.current.output_tokens || 0}</b> tokens</li>
+                            <li>Total: <b>${data.current.total_tokens || 0}</b> tokens</li>
+                            <li>Cost: <b>$${(data.current.cost || 0).toFixed(4)}</b></li>
                         </ul>
-                        <p><b>Session Total:</b> ${data.total.total_tokens} tokens ($${data.total.total_cost.toFixed(4)})</p>
-                        <p><b>Per Model:</b></p>
+                    </div>
+                    <div class="total-usage">
+                        <h4>Session Total</h4>
+                        <p><b>${data.total.total_tokens || 0}</b> tokens ($${(data.total.total_cost || 0).toFixed(4)})</p>
+                        <h4>Per Model</h4>
                         <ul>
-                            ${Object.entries(data.total.models).map(([model, stats]) => `
-                                <li>${model}: ${stats.tokens} tokens ($${stats.cost.toFixed(4)})</li>
+                            ${Object.entries(data.total.models || {}).map(([model, stats]) => `
+                                <li>${model}: <b>${stats.tokens}</b> tokens ($${stats.cost.toFixed(4)})</li>
                             `).join('')}
                         </ul>
                     </div>
-                `;
-            }
+                </div>
+            `;
+            toolInfo.classList.add('active');
         } catch (error) {
             console.error('Error fetching token stats:', error);
-            if (toolInfo.classList.contains('active')) {
-                toolInfo.innerHTML = '<h3>Token Usage</h3><p>Error loading token information</p>';
-            }
+            toolInfo.innerHTML = `
+                <div class="token-info">
+                    <h3>Token Usage</h3>
+                    <p>Error loading token information</p>
+                </div>
+            `;
+            toolInfo.classList.add('active');
         }
+    }
+
+    // Lisätään apufunktiot system promptin käsittelyyn
+    async function getSystemPrompt() {
+        try {
+            const response = await fetch('/api/system/prompt');
+            const data = await response.json();
+            return data.prompt || 'Default system prompt';
+        } catch (error) {
+            console.error('Error getting system prompt:', error);
+            return 'Error loading system prompt';
+        }
+    }
+
+    async function updateSystemPrompt() {
+        const newPrompt = document.getElementById('system-prompt').value;
+        try {
+            const response = await fetch('/api/system/prompt', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ prompt: newPrompt })
+            });
+            const data = await response.json();
+            if (data.status === 'success') {
+                showToolInfo('System'); // Päivitä näkymä
+            }
+        } catch (error) {
+            console.error('Error updating system prompt:', error);
+        }
+    }
+
+    // Lisätään prompt template -funktiot
+    function usePrompt(template) {
+        const messageInput = document.getElementById('message-input');
+        const templates = {
+            analysis: "Please analyze the following:\n\n",
+            summary: "Please provide a summary of:\n\n",
+            code: "Please help me with this code:\n\n"
+        };
+        messageInput.value = templates[template] || '';
+        messageInput.focus();
     }
 });

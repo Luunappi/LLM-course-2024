@@ -139,6 +139,32 @@ def get_token_stats():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/chat/message/<int:message_id>", methods=["DELETE"])
+def delete_chat_message(message_id):
+    """Delete specific chat message"""
+    try:
+        success = orchestrator.chat_tool.delete_message(message_id)
+        if success:
+            return jsonify({"status": "success"})
+        return jsonify({"error": "Message not found"}), 404
+    except Exception as e:
+        logger.error(f"Error deleting message: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/chat/history", methods=["DELETE"])
+def clear_chat_history():
+    """Clear all chat history"""
+    try:
+        success = orchestrator.chat_tool.clear_history()
+        if success:
+            return jsonify({"status": "success"})
+        return jsonify({"error": "Failed to clear history"}), 500
+    except Exception as e:
+        logger.error(f"Error clearing history: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 # ... muu koodi ...
 
 if __name__ == "__main__":
