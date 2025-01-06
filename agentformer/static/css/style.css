@@ -377,3 +377,11 @@ body, html {
 .model-name {
     margin-right: 8px;
 }
+
+/* Lisätään uusi wrapper viestejä varten */
+.messages-wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 100%;
+}

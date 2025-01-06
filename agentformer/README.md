@@ -1,265 +1,164 @@
-# AgentFormer - Modulaarinen Tekoälyagenttijärjestelmä
+# AgentFormer
 
-## Yleiskuvaus
+AgentFormer on modulaarinen tekoälyagenttien kehitysalusta, jonka tavoitteena on yhdistää useita taustalla olevia kielimalleja (esimerkiksi GPT-4o-min, o1-mini ja o1) sekä monipuolisia työkaluja yhden kattavan keskustelualustan alle. 
 
-AgentFormer on modulaarinen tekoälyagenttijärjestelmä, joka yhdistää:
-- Useita kielimalleja (LLM)
-- Kontekstuaalisen muistin
-- Työkaluintegraatiot
-- Vastausten laadun evaluoinnin
+Sen avulla voit:
+- Keskustella eri kielimallien kanssa samassa ympäristössä
+- Laajentaa tai räätälöidä toiminnallisuutta erilaisten työkalumoduulien kautta
+- Tallentaa ja hyödyntää keskustelumuisteja sekä hallita kontekstia
+- Rakentaa järjestelmäpromptien avulla monenlaisia agentteja eri käyttötarkoituksiin
+- Seurata tokenien käyttöä ja laskea kustannuksia
+- Toteuttaa RAG-toiminnallisuutta (Retrieval-Augmented Generation) dokumenttien käsittelyä varten
 
-Järjestelmä on suunniteltu erityisesti:
-- Akateemiseen tutkimukseen
-- Opetuskäyttöön
-- Tekoälyagenttien kehittämiseen
+## Kansiorakenne
+
+agentformer/
+├── core/ # Ydinkomponentit
+│ ├── __init__.py
+│ ├── ceval.py # Evaluointilogiikkaa
+│ ├── exceptions.py # Poikkeuksien käsittely
+│ ├── messaging.py # Viestinvälitysjärjestelmä
+│ ├── orchestrator.py # Pääorkestraattori
+│ └── triggermanagement.py # Triggerien hallinta
+│
+├── memory/ # Muistinhallinta
+│ ├── __init__.py
+│ ├── base_memory.py # Muistin perusluokka
+│ ├── distributed.py # Hajautettu muisti
+│ ├── hierarchical.py # Hierarkkinen muisti
+│ └── memory_manager.py # Muistin hallinta
+│
+├── ui_components/ # Käyttöliittymäkomponentit
+│ ├── __init__.py
+│ ├── model_module.py # Mallien hallinta
+│ ├── static/ # Staattiset resurssit
+│ │ ├── css/ # Tyylitiedostot
+│ │ ├── js/ # JavaScript
+│ │ └── images/ # Kuvat ja ikonit
+│ └── templates/ # HTML-templatet
+│
+├── tools/ # Työkalumoduulit
+│ ├── __init__.py
+│ ├── diagram_tool.py # Kaaviotyökalu
+│ └── rag_tool.py # RAG-toiminnallisuus
+│
+├── config/ # Konfiguraatiotiedostot
+│ └── api_config.json
+│
+├── tests/ # Testit
+│ ├── __init__.py
+│ ├── conftest.py # Testien konfiguraatio
+│ ├── test_basic.py
+│ ├── test_e2e.py # End-to-end testit
+│ ├── test_evaluation.py # Evaluoinnin testit
+│ └── test_openai_api.py # OpenAI API testit
+│
+├── agentformer_web.py # Web-sovelluksen päämoduuli
+├── pytest.ini # Pytest-konfiguraatio
+├── requirements.txt # Projektin riippuvuudet
+├── test_requirements.txt # Testien riippuvuudet
+├── debug.log # Debug-loki
+└── README.md # Tämä dokumentti
+
+## Keskeiset Toiminnot
+
+1. **Useita taustamalleja**: AgentFormerin modulariteetti mahdollistaa samanaikaisesti useamman kielimallin hallinnan. Voit helposti vaihtaa mallia tai ottaa käyttöön useita erilaisiin tehtäviin soveltuvia malleja.
+
+2. **Modulaarinen Arkkitehtuuri**: Ratkaisun ydin on joustavasti laajennettavissa. Jokainen työkalu tai agentin osa toimii omana moduulina, jonka voi lisätä tai poistaa tarpeen mukaan.
+
+3. **Muistinhallinta**: Keskustelumuistia (Memory Manager) hyödynnetään aiempien viestien ja kontekstin tallentamiseen. Tämä mahdollistaa rikkaamman ja syvemmän vuorovaikutuksen agentin kanssa.
+
+4. **RAG-toiminnallisuus**: Sivustolle voi ladata erilaisia tiedostoja (kuten PDF, TXT, MD), ja järjestelmä pystyy hyödyntämään niitä osana vastausten tuottamista.
+
+5. **Web-käyttöliittymä**: Sovellusta voi käyttää selaimessa. Käyttöliittymässä on tuki keskustelukomennoille, mallin valinnalle sekä tiedostojen lataamiselle.
+
+6. **Tokenien seuranta**: Agentti raportoi kussakin viestissä käytetyt tokenit ja laskee kustannusarvion, jolloin kehittäjä pysyy perillä yllätyskuluista.
+
+7. **Järjestelmäpromptien hallinta**: Mahdollistaa erilaisten “systeemitason” alustuspromptien ja työkalujen valintapromptien käytön.
 
 ## Arkkitehtuuri
 
-### Ydinkomponentit
+AgentFormer on rakennettu kerroksittaiseksi järjestelmäksi, jossa Orchestrator toimii keskeisenä koordinaattorina kaikkien komponenttien välillä. Message Bus -järjestelmä mahdollistaa asynkronisen viestinvälityksen eri moduulien välillä, mikä tekee järjestelmästä skaalautuvan ja joustavan. Memory Manager ylläpitää kolmitasoista muistia (työmuisti, episodinen muisti ja semanttinen muisti), mikä mahdollistaa kontekstin säilymisen ja aiempien keskustelujen hyödyntämisen. Työkalumoduulit (Tools) ovat itsenäisiä komponentteja, jotka voidaan dynaamisesti ladata ja poistaa käytöstä tarpeen mukaan. Web-käyttöliittymä on toteutettu Flaskilla ja se kommunikoi Orchestratorin kanssa REST-rajapinnan kautta.
 
-1. **Orchestrator**
-   - Hallinnoi viestinvälitystä komponenttien välillä
-   - Koordinoi työkalujen käyttöä
-   - Ylläpitää järjestelmän tilaa
+1. **Orchestrator**  
+   Vastaa keskustelun ohjauksesta (komponentti nimeltä AgentFormerOrchestrator). Se reitittää viestejä agenttien ja työkalujen välillä sekä koordinoi mallien käyttöä.
 
-2. **Memory Manager** 
-   - Hierarkkinen muistijärjestelmä
-   - Tukee eri muistityyppejä:
-     - Core (ydinmuisti)
-     - Semantic (semanttinen muisti)
-     - Episodic (episodinen muisti)
-     - Working (työmuisti)
+2. **Memory Manager**  
+   Tallentaa keskusteluhistorian ja palvelee “pitkänä muistina.” Sen avulla malli pystyy hyödyntämään monimutkaisempia käyttäjäkonteksteja ja hakemaan aiemmin kerrottuja tietoja.
 
-3. **Model Module**
-   - Kielimallien hallinta
-   - Tukee useita malleja:
-     - GPT-4
-     - Claude
-     - Muut OpenAI/Anthropic mallit
-   - Dynaaminen mallin valinta
+3. **Model Module**  
+   Käsittelee useita eri mallikonfiguraatioita (esim. GPT-4o-min, o1-mini ja o1). Moduulista säädetään mm. lämpötilaa, token-rajoja ja muita parametreja. Se vastaa myös avoimen rajapinnan kutsuista (OpenAI API).
 
-4. **CEval (Contextual Evaluator)**
-   - Arvioi vastausten laatua
-   - Mittaa:
-     - Relevanssia
-     - Faktuaalisuutta
-     - Johdonmukaisuutta
-     - Kontekstin käyttöä
+4. **Message Bus**  
+   Mahdollistaa agenttien, muistinhallinnan ja työkalumoduulien välisen viestiliikenteen. Kytkeytyy Orchestratoriin ja huolehtii viestien välittämisestä oikeille osapuolille.
 
-### Työkalut
+5. **Tools**  
+   Joukkio erikoistyökaluja (kuten RAG, kaaviotyökalu, tms.), joiden avulla agentti laajentaa toiminnallisuuttaan. Nämä moduulit lisätään tarpeen mukaan Orchestratoriin.
 
-1. **RAG Tool**
-   - Retrieval Augmented Generation
-   - Dokumenttien haku ja indeksointi
-   - Kontekstin rikastaminen
+6. **Web UI**  
+   Flask-pohjainen käyttöliittymä tarjoaa selkeän tavan käyttää agenttia selaimessa. Käyttäjä voi syöttää kysymyksiä, ladata tiedostoja ja vaihtaa mallia suoraan selainikkunasta.
 
-2. **Diagram Tool**
-   - Kaavioiden luonti ja muokkaus
-   - Tukee useita kaaviotyyppejä
-   - Mermaid-syntaksi
+## Tiedostorakenne
 
-### Evaluointi ja laadunvarmistus
+Alta löytyy tärkeimmät kansiot ja tiedostot yhden lauseen selitteillä:
 
-Järjestelmä käyttää ceval.py-moduulia vastausten laadun arviointiin:
+- **agentformer/agentformer_web.py**  
+  Sisältää Flask-sovelluksen juoksevan koodin ja reitit HTTP-pyyntöihin (mm. chat, upload, update_model).
 
-1. **Vastausten evaluointi**
-   ```python
-   from core.ceval import CEval
-   
-   evaluator = CEval()
-   score = evaluator.evaluate_response(
-       question="Mikä on pääkaupunki?",
-       response="Helsinki on Suomen pääkaupunki",
-       context="Suomen pääkaupunki on Helsinki"
-   )
-   ```
+- **agentformer/core/ceval.py**  
+  Ydinlogiikkaa evaluointeihin ja laskentatehtäviin liittyen (esim. kontekstin käsittelyyn).
 
-2. **Evaluointikriteerit**
-   - Vastauksen relevanssi kysymykseen
-   - Kontekstin hyödyntäminen
-   - Faktojen oikeellisuus
-   - Vastauksen selkeys ja ymmärrettävyys
+- **agentformer/core/orchestrator.py**  
+  Pääorkestraattori, joka ohjaa viestinvälitystä agenttien ja työkalujen välillä.
 
-3. **Suorituskykymittarit**
-   - Vastausaika
-   - Muistin käyttö
-   - API-kutsujen määrä
-   - Vastausten laatu
+- **agentformer/tests/**  
+  Kokoelma testejä, joilla varmistetaan eri osien toimivuus (test_basic.py, test_e2e.py, test_openai_api.py jne.).
 
-## Asennus
+- **agentformer/tools/diagram_tool.py**  
+  Laajennus, joka mahdollistaa kaavion tai diagrammin muodostamisen tai käsittelyn osana agentin toimintoja.
 
-### Vaatimukset
+- **agentformer/tools/rag_tool.py**  
+  RAG (Retrieval-Augmented Generation) -työkalumoduuli dokumenttien lukemiseen ja hankitun tiedon hyödyntämiseen vastauksissa.
 
-- Python 3.9+
-- pip
-- virtualenv (suositeltu)
+- **agentformer/ui_components/model_module.py**  
+  Model Module, joka hallinnoi kielimallien konfiguraatiota, API-kutsuja ja vastausten generointia.
 
-### Perusasennus
+- **agentformer/static/**  
+  Kansio staattisille tiedostoille, kuten CSS-tyyleille, JavaScript-tiedostoille ja kuville.
 
-1. Kloonaa repositorio:
-```bash
-git clone https://github.com/yourusername/agentformer.git
-cd agentformer
-```
+- **agentformer/templates/**  
+  HTML-pohjat Flask-käyttöliittymälle (chat.html, index.html).
 
-2. Luo virtuaaliympäristö:
-```bash
-python -m venv venv
-source venv/bin/activate  # Unix
-venv\Scripts\activate     # Windows
-```
+- **agentformer/config/api_config.json**  
+  Esimerkkikonfiguraatiot (esim. API-avaimet), joita käytetään mallikutsujen yhteydessä.
 
-3. Asenna riippuvuudet:
-```bash
-pip install -r requirements.txt
-pip install -r test_requirements.txt  # testiriippuvuudet
-```
+- **agentformer/pytest.ini**  
+  Pytest-konfiguraatiotestausta varten (esim. asetukset kattavuusraportointiin yms.).
 
-### Konfigurointi
+- **agentformer/test_requirements.txt**  
+  Lista riippuvuuksista, jotka asennetaan testejä varten.
 
-1. Kopioi config-template:
-```bash
-cp config/api_config.example.json config/api_config.json
-```
+- **agentformer/README.md**  
+  Tämä tiedosto, joka sisältää AgentFormerin yleiskuvauksen.
 
-2. Lisää API-avaimet:
-```json
-{
-    "openai": {
-        "api_key": "your-key-here"
-    },
-    "anthropic": {
-        "api_key": "your-key-here"
-    }
-}
-```
+- **agentformer/memory/memory_manager.py**  
+  Hallinnoi kolmitasoista muistijärjestelmää (työmuisti, episodinen muisti, semanttinen muisti) ja tarjoaa rajapinnan muistin käsittelyyn.
 
-## Kehitys
+- **agentformer/memory/memory_types.py**  
+  Määrittelee eri muistityyppien toteutukset ja niiden erityispiirteet.
 
-### Testaus
+- **agentformer/memory/memory_operations.py**  
+  Sisältää toiminnot muistin hakuun, tallentamiseen ja päivittämiseen.
 
-1. Aja kaikki testit:
-```bash
-python -m pytest tests/
-```
+- **agentformer/memory/memory_utils.py**  
+  Apufunktiot muistin käsittelyyn, kuten muistin siivoukseen ja optimointiin.
 
-2. Aja tietty testitiedosto:
-```bash
-python -m pytest tests/test_basic.py
-```
+- **agentformer/core/context.py**  
+  Hallinnoi keskustelukontekstia ja sen päivittämistä.
 
-3. Testikattavuusraportti:
-```bash
-python -m pytest --cov=agentformer --cov-report=html
-```
+## Lisätietoja
 
-### Koodityyli
+AgentFormerin modulaarisuus tekee siitä joustavan alustan, joka soveltuu monenlaisiin luonnollisen kielen käsittelytehtäviin. Jokainen komponentti on suunniteltu laajennettavaksi, jotta kehittäjät voivat hyödyntää haluamiaan kielimalleja sekä liittää omia erikoistyökalujaan mukaan.
 
-- Käytä black-formatointia:
-```bash
-black .
-```
 
-- Tarkista tyylit:
-```bash
-flake8 .
-```
 
-### Dokumentaatio
-
-- Google-tyylinen docstring
-- Tyyppiannotaatiot pakollisia
-- Kommentoi monimutkaiset algoritmit
-
-## Käyttö
-
-### Web-käyttöliittymä
-
-1. Käynnistä palvelin:
-```bash
-python agentformer_web.py
-```
-
-2. Avaa selaimessa:
-```
-http://localhost:5000
-```
-
-### Python API
-
-```python
-from core.orchestrator import AgentFormerOrchestrator
-
-# Alusta järjestelmä
-orchestrator = AgentFormerOrchestrator()
-
-# Lähetä viesti
-response = orchestrator.process_request(
-    "chat",
-    {"message": "Kerro Helsingistä"}
-)
-
-# Tarkista tila
-state = orchestrator.get_memory_state()
-```
-
-## Kontribuutiot
-
-1. Fork-repository
-2. Luo feature branch
-3. Tee muutokset
-4. Aja testit
-5. Tee pull request
-
-## Lisenssi
-
-MIT License - katso LICENSE.md
-
-## Yhteystiedot
-
-- Issue Tracker: https://github.com/yourusername/agentformer/issues
-- Wiki: https://github.com/yourusername/agentformer/wiki
-
-## Kiitokset
-
-- OpenAI
-- Anthropic
-- Muut kontribuuttorit
-
-## 8. Testit
-
-### Testien rakenne
-
-1. **Perustestit (test_system_core.py)**
-   - Mallien konfiguraation testaus
-   - Muistin alustuksen testaus
-
-2. **Mallitestit (test_model_integration.py)**
-   - API-kutsujen parametrien validointi
-   - Mallin vaihdon vaikutus parametreihin
-   - API-virhetilanteiden käsittely
-
-3. **Evaluointitestit (test_evaluation.py)**
-   - Kontekstin käytön arviointi
-   - Vastausten relevanssin mittaus
-   - Faktojen tarkistus
-   - Selkeyden arviointi
-
-4. **Web-käyttöliittymätestit (test_web_interface.py)**
-   - HTTP-endpointit
-   - Viestien käsittely
-   - Tilanhallinta
-   - Virhetilanteet
-
-### Testien ajo
-
-```bash
-# Asenna testiriippuvuudet
-pip install -r test_requirements.txt
-
-# Aja kaikki testit
-python -m pytest tests/
-
-# Aja tietty testitiedosto
-python -m pytest tests/test_web_interface.py
-```
