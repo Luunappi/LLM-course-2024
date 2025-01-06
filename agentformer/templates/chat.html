@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>AgentFormer Chat</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <style>
         .chat-container {
             max-width: 800px;
@@ -33,52 +34,37 @@
 </head>
 <body>
     <div class="chat-container">
+        <div class="toolbar">
+            <div class="model-selector">
+                <button id="model-select-btn" class="btn">
+                    <span class="model-name">Loading...</span>
+                    <span class="model-arrow">▼</span>
+                </button>
+                <div id="model-dropdown" class="model-dropdown">
+                    <!-- Mallit lisätään dynaamisesti -->
+                </div>
+            </div>
+        </div>
         <div id="chat-messages"></div>
         <div class="input-area">
             <input type="text" id="message-input" placeholder="Type your message...">
-            <button onclick="sendMessage()">Send</button>
+            <button id="send-button">Send</button>
+        </div>
+        <div class="token-info-panel">
+            <div class="current-usage">
+                <div id="token-count">0 tokens used (0 in, 0 out)</div>
+                <div id="token-cost">Cost: $0.0000</div>
+            </div>
+            <div id="session-stats" class="session-stats">
+                <div class="session-totals">
+                    <p>Session total: 0 tokens ($0.0000)</p>
+                    <p>Per model:</p>
+                    <ul></ul>
+                </div>
+            </div>
         </div>
     </div>
 
-    <script>
-        function sendMessage() {
-            const input = document.getElementById('message-input');
-            const message = input.value;
-            if (!message) return;
-
-            // Add user message to chat
-            addMessage(message, 'user');
-            input.value = '';
-
-            // Send to backend
-            fetch('/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({message: message})
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Näytä vastaus chat-ikkunassa
-                if (data) {
-                    addMessage(data, 'assistant');  // data on suoraan vastauksen teksti
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                addMessage('Error: Failed to get response', 'assistant');
-            });
-        }
-
-        function addMessage(text, sender) {
-            const messages = document.getElementById('chat-messages');
-            const div = document.createElement('div');
-            div.className = `message ${sender}-message`;
-            div.textContent = text;
-            messages.appendChild(div);
-            messages.scrollTop = messages.scrollHeight;
-        }
-    </script>
+    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 </body>
 </html> 

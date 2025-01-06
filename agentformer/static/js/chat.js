@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-button');
     const chatMessages = document.getElementById('chat-messages');
@@ -6,11 +6,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function addMessage(message, isUser = false) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
-        messageDiv.textContent = message;
-        
+
+        // Käytetään innerHTML:ia ja korvataan rivinvaihdot <br>-tageilla
+        const htmlMessage = message.replace(/\n/g, '<br>');
+        messageDiv.innerHTML = htmlMessage;
+
         // Lisää viesti alimmaksi
         chatMessages.appendChild(messageDiv);
-        
+
         // Vieritä chat aina alas uusimman viestin kohdalle
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
@@ -95,26 +98,34 @@ document.addEventListener('DOMContentLoaded', function() {
     async function updateTokenInfo(data) {
         const tokenCount = document.getElementById('token-count');
         const tokenCost = document.getElementById('token-cost');
+        const sessionStats = document.getElementById('session-stats');
         
         if (!tokenCount || !tokenCost) return;
         
         try {
-            // Jos token_usage ei tule suoraan vastauksessa, haetaan se erikseen
-            if (!data.token_usage && data.response) {
-                const response = await fetch('/calculate_tokens', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: data.response })
-                });
-                const tokenData = await response.json();
-                data.token_usage = tokenData.token_usage;
-            }
+            // Hae session kokonaistilastot
+            const sessionResponse = await fetch('/token_info');
+            const sessionData = await sessionResponse.json();
             
+            // Päivitä nykyisen viestin token-käyttö
             if (data.token_usage) {
                 const {input_tokens = 0, output_tokens = 0, total_tokens = 0, cost = 0} = data.token_usage;
                 tokenCount.textContent = `${total_tokens} tokens used (${input_tokens} in, ${output_tokens} out)`;
                 tokenCost.textContent = `Cost: $${cost.toFixed(4)}`;
             }
+            
+            // Päivitä session kokonaistilastot
+            let sessionStatsHtml = '<div class="session-totals">';
+            sessionStatsHtml += `<p>Session total: ${sessionData.total_tokens} tokens ($${sessionData.total_cost.toFixed(4)})</p>`;
+            sessionStatsHtml += '<p>Per model:</p><ul>';
+            
+            // Lisää mallikohtaiset tilastot
+            for (const [model, stats] of Object.entries(sessionData.models)) {
+                sessionStatsHtml += `<li>${model}: ${stats.tokens} tokens ($${stats.cost.toFixed(4)})</li>`;
+            }
+            sessionStatsHtml += '</ul></div>';
+            
+            sessionStats.innerHTML = sessionStatsHtml;
         } catch (error) {
             console.error('Error updating token info:', error);
         }
@@ -123,8 +134,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Model selector handling
     const modelBtn = document.getElementById('model-select-btn');
     const modelDropdown = document.getElementById('model-dropdown');
-    const modelName = modelBtn.querySelector('.model-name');
-
+    
     if (modelBtn) {
         modelBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -142,42 +152,125 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Handle model selection
-    document.querySelectorAll('.model-option').forEach(option => {
-        option.addEventListener('click', async () => {
-            const selectedModel = option.dataset.model;
-            const selectedName = option.textContent;
-            
-            try {
-                const response = await fetch('/switch_model', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ model: selectedModel })
-                });
-                
-                const data = await response.json();
-                if (data.success) {
-                    modelName.textContent = selectedName;
-                    modelDropdown.style.display = 'none';
-                    addMessage(`Switched to ${selectedName} model`);
-                } else {
-                    addMessage('Failed to switch model: ' + (data.error || 'Unknown error'));
-                }
-            } catch (error) {
-                addMessage('Error switching model: ' + error.message);
-            }
-        });
-    });
-
     // Close dropdown when clicking outside
     document.addEventListener('click', () => {
         if (modelDropdown) {
             modelDropdown.style.display = 'none';
         }
     });
+
+    // Alusta mallinvalitsin heti kun sivu on latautunut
+    await initializeModelSelector();
 });
+
+async function initializeModelSelector() {
+    try {
+        const modelNameElement = document.querySelector('.model-name');
+        if (!modelNameElement) {
+            console.error('Model name element not found');
+            return;
+        }
+
+        // Hae nykyinen malli
+        const currentResponse = await fetch('/models/current');
+        if (!currentResponse.ok) {
+            throw new Error(`HTTP error! status: ${currentResponse.status}`);
+        }
+        const currentModel = await currentResponse.json();
+        console.log('Current model data:', currentModel);
+
+        // Tarkista että data sisältää tarvittavat kentät
+        if (!currentModel || !currentModel.button_name) {
+            console.error('Invalid model data received:', currentModel);
+            modelNameElement.textContent = 'gpt-4o-mini';
+            return;
+        }
+        
+        // Aseta nykyisen mallin nimi nappiin
+        modelNameElement.textContent = currentModel.button_name;
+        
+        // Hae saatavilla olevat mallit
+        const availableResponse = await fetch('/models/available');
+        if (!availableResponse.ok) {
+            throw new Error(`HTTP error! status: ${availableResponse.status}`);
+        }
+        const availableModels = await availableResponse.json();
+        console.log('Available models:', availableModels);
+        
+        const modelDropdown = document.getElementById('model-dropdown');
+        if (!modelDropdown) {
+            console.error('Model dropdown element not found');
+            return;
+        }
+
+        modelDropdown.innerHTML = '';
+        
+        // Lisää mallit dropdowniin
+        if (Array.isArray(availableModels)) {
+            availableModels.forEach(model => {
+                if (!model || !model.name || !model.button_name || !model.display_name) {
+                    console.error('Invalid model data:', model);
+                    return;
+                }
+                const option = document.createElement('div');
+                option.className = 'model-option';
+                option.dataset.model = model.name;
+                option.dataset.buttonName = model.button_name;
+                option.dataset.displayName = model.display_name;
+                option.textContent = model.display_name;
+                modelDropdown.appendChild(option);
+
+                // Lisää click handler jokaiselle vaihtoehdolle
+                option.addEventListener('click', async () => {
+                    const selectedModel = option.dataset.model;
+                    const buttonName = option.dataset.buttonName;
+                    
+                    try {
+                        const response = await fetch('/switch_model', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ model: selectedModel })
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        
+                        const data = await response.json();
+                        console.log('Switch model response:', data); // Debug-loggaus
+                        
+                        if (data.success) {
+                            // Käytä palautetun mallin tietoja
+                            const model = data.model;
+                            if (model && model.button_name) {
+                                modelNameElement.textContent = model.button_name;
+                            } else {
+                                // Fallback jos palvelin ei palauta mallin tietoja
+                                modelNameElement.textContent = buttonName;
+                            }
+                            modelDropdown.style.display = 'none';
+                            await updateTokenInfo({});
+                        } else {
+                            console.error('Failed to switch model:', data.error);
+                        }
+                    } catch (error) {
+                        console.error('Error switching model:', error);
+                    }
+                });
+            });
+        } else {
+            console.error('Available models is not an array:', availableModels);
+        }
+    } catch (error) {
+        console.error('Error initializing model selector:', error);
+        const modelNameElement = document.querySelector('.model-name');
+        if (modelNameElement) {
+            modelNameElement.textContent = 'gpt-4o-mini';
+        }
+    }
+}
 
 // Info panel handling
 const infoPanels = ['token', 'system', 'prompt', 'document'];

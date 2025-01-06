@@ -2,7 +2,7 @@
 RAG Orchestrator
 
 Core component that coordinates tool selection and usage. Acts as the brain of the system by:
-1. Analyzing queries using a fixed GPT-4-Turbo model for consistent tool selection
+1. Analyzing queries using a fixed GPT-4o-mini model for consistent tool selection
 2. Determining which tools are needed for each query
 3. Coordinating tool execution and combining results
 
@@ -21,7 +21,7 @@ from tools.llm_tool import LLMTool
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Fixed model for all tool selection decisions to ensure consistency
-TOOL_EVALUATOR_MODEL = "gpt-4-turbo-preview"
+TOOL_EVALUATOR_MODEL = "gpt-4o-mini"
 
 
 class RAGOrchestrator:

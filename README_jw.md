@@ -7,6 +7,10 @@ source venv/bin/activate
 deactivate
 ``` 
 
+git add .
+git commit -m "Kerro mitä tuli tehtyä..."
+git push origin main
+
 ## Requirements
 pip install pytest
 pip install python-dotenv

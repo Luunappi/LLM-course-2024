@@ -11,6 +11,8 @@ from memory.memory_manager import MemoryManager
 from tools.diagram_tool import DiagramTool
 from core.messaging import MessageBus, EventType, Message
 from ui_components.model_module import Models
+from tools.prompt_tool import PromptTool
+from tools.model_tool import ModelTool
 
 # DEBUG: Konfiguroi debug-loggaus
 logger = logging.getLogger(__name__)
@@ -34,6 +36,8 @@ class AgentFormerOrchestrator:
             self.tools = {}
             self.current_state = {}
             self.models = Models()
+            self.prompt_tool = PromptTool()
+            self.model_tool = ModelTool()
 
             # Rekisteröi perusviestien käsittelijät
             self._register_message_handlers()
@@ -74,16 +78,21 @@ class AgentFormerOrchestrator:
         for capability in tool.capabilities:
             self.message_bus.subscribe(f"{name}_{capability}", tool.handle_capability)
 
-    def process_request(self, request_type: str, data: dict) -> dict:
+    def process_request(self, mode: str, params: dict) -> dict:
         """Process request and return response dictionary"""
         try:
-            response = self.message_bus.publish(request_type, data)
+            # Valitse sopiva malli tehtävätyypin mukaan
+            model_name = self.model_tool.get_model_for_task(mode)
+            model_config = self.model_tool.get_model_config(model_name)
+
+            # Käytä mallia prosessointiin...
+            response = self.message_bus.publish(mode, params)
             if isinstance(response, str):
                 return {
                     "response": response,
-                    "input_tokens": len(data.get("message", "")),
+                    "input_tokens": len(params.get("message", "")),
                     "output_tokens": len(response),
-                    "total_tokens": len(data.get("message", "")) + len(response),
+                    "total_tokens": len(params.get("message", "")) + len(response),
                 }
             return response
         except Exception as e:
@@ -229,16 +238,30 @@ class AgentFormerOrchestrator:
             logger.error(f"Document processing error: {e}")
             raise
 
-    def set_model(self, model: str) -> bool:
+    def set_model(self, model_name: str) -> bool:
         """Switch to a different model"""
         try:
-            success = self.models.set_model(model)
+            success = self.model_tool.set_model(model_name)
             if success:
-                # Päivitä tila
-                self.current_state["current_model"] = self.models.get_current_model()
-                logger.debug(f"Switched to model: {model}")
+                logger.debug(f"Switched to model: {model_name}")
                 return True
             return False
         except Exception as e:
             logger.error(f"Failed to switch model: {e}")
             return False
+
+    def get_system_prompt(self) -> str:
+        """Get current system prompt"""
+        return self.prompt_tool.get_prompt("system")
+
+    def get_tool_selection_prompt(self) -> str:
+        """Get current tool selection prompt"""
+        return self.prompt_tool.get_prompt("tool")
+
+    def set_system_prompt(self, content: str) -> bool:
+        """Set new system prompt"""
+        return self.prompt_tool.set_prompt("system", content)
+
+    def set_tool_selection_prompt(self, content: str) -> bool:
+        """Set new tool selection prompt"""
+        return self.prompt_tool.set_prompt("tool", content)
