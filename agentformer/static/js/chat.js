@@ -80,31 +80,218 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // System-napin käsittely
         if (tool === 'System') {
-            toolInfo.innerHTML = `
-                <div class="tool-content">
-                    <h3>System Settings</h3>
-                    <p>Current system prompt: ${await getSystemPrompt()}</p>
-                    <textarea id="system-prompt" rows="4" placeholder="Edit system prompt..."></textarea>
-                    <button onclick="updateSystemPrompt()">Update</button>
-                </div>
-            `;
-            toolInfo.classList.add('active');
+            try {
+                const systemStats = await fetch('/api/system/stats').then(r => r.json());
+                
+                toolInfo.innerHTML = `
+                    <div class="tool-content">
+                        <h3>System Information</h3>
+                        
+                        <div class="system-section">
+                            <h4>Performance Metrics</h4>
+                            <div class="metrics-grid">
+                                <div class="metric">
+                                    <div class="metric-value">${systemStats.total_time.toFixed(2)}s</div>
+                                    <div class="metric-label">Total Processing Time</div>
+                                </div>
+                                <div class="metric">
+                                    <div class="metric-value">${systemStats.steps.length}</div>
+                                    <div class="metric-label">Processing Steps</div>
+                                </div>
+                                <div class="metric">
+                                    <div class="metric-value">${systemStats.model_used || 'N/A'}</div>
+                                    <div class="metric-label">Current Model</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="system-section">
+                            <h4>Memory Usage</h4>
+                            <div class="metrics-grid">
+                                <div class="metric">
+                                    <div class="metric-value">${Math.round(systemStats.additional_metrics.memory_usage.rss)}MB</div>
+                                    <div class="metric-label">RSS Memory</div>
+                                </div>
+                                <div class="metric">
+                                    <div class="metric-value">${Math.round(systemStats.additional_metrics.memory_usage.vms)}MB</div>
+                                    <div class="metric-label">Virtual Memory</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="system-section">
+                            <h4>Active Components</h4>
+                            <div class="component-list">
+                                ${systemStats.additional_metrics.active_components.map(comp => 
+                                    `<div class="component-item">${comp}</div>`
+                                ).join('')}
+                            </div>
+                        </div>
+
+                        ${systemStats.steps.length > 0 ? `
+                            <div class="system-section">
+                                <h4>Processing Steps</h4>
+                                <div class="steps-timeline">
+                                    ${systemStats.steps.map(step => `
+                                        <div class="timeline-item">
+                                            <div class="step-time">${step.time.toFixed(2)}s</div>
+                                            <div class="step-name">${step.step}</div>
+                                            ${step.details ? `
+                                                <div class="step-details">
+                                                    ${Object.entries(step.details).map(([key, value]) => 
+                                                        `<div>${key}: ${value}</div>`
+                                                    ).join('')}
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                toolInfo.classList.add('active');
+            } catch (error) {
+                console.error('Error loading system info:', error);
+                toolInfo.innerHTML = `
+                    <div class="tool-content">
+                        <h3>System Information</h3>
+                        <p>Error loading system information</p>
+                    </div>
+                `;
+                toolInfo.classList.add('active');
+            }
+            return;
+        }
+
+        // Lisää Debug-napin käsittely
+        if (tool === 'Debug') {
+            try {
+                const debugInfo = await fetch('/api/debug/info').then(r => r.json());
+                
+                toolInfo.innerHTML = `
+                    <div class="tool-content">
+                        <h3>Debug Information</h3>
+                        
+                        <div class="debug-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">Total Events:</span>
+                                <span class="stat-value">${debugInfo.stats.total_events}</span>
+                            </div>
+                            <div class="stat-item error">
+                                <span class="stat-label">Errors:</span>
+                                <span class="stat-value">${debugInfo.stats.error_count}</span>
+                            </div>
+                            <div class="stat-item warning">
+                                <span class="stat-label">Warnings:</span>
+                                <span class="stat-value">${debugInfo.stats.warning_count}</span>
+                            </div>
+                        </div>
+
+                        <div class="debug-events">
+                            <h4>Recent Events</h4>
+                            ${debugInfo.events.map(event => `
+                                <div class="debug-event ${event.level.toLowerCase()}">
+                                    <div class="event-header">
+                                        <span class="event-time">${event.timestamp}</span>
+                                        <span class="event-level">${event.level}</span>
+                                        <span class="event-component">${event.component}</span>
+                                    </div>
+                                    <div class="event-message">${event.message}</div>
+                                    ${event.details ? `
+                                        <div class="event-details">
+                                            <pre>${JSON.stringify(event.details, null, 2)}</pre>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                toolInfo.classList.add('active');
+            } catch (error) {
+                console.error('Error loading debug info:', error);
+                toolInfo.innerHTML = `
+                    <div class="tool-content">
+                        <h3>Debug Information</h3>
+                        <p>Error loading debug information</p>
+                    </div>
+                `;
+                toolInfo.classList.add('active');
+            }
             return;
         }
 
         // Prompt-napin käsittely
         if (tool === 'Prompt') {
-            toolInfo.innerHTML = `
-                <div class="tool-content">
-                    <h3>Prompt Templates</h3>
-                    <div class="prompt-templates">
-                        <button onclick="usePrompt('analysis')">Analysis Template</button>
-                        <button onclick="usePrompt('summary')">Summary Template</button>
-                        <button onclick="usePrompt('code')">Code Template</button>
+            try {
+                const response = await fetch('/api/prompts');
+                const data = await response.json();
+                
+                toolInfo.innerHTML = `
+                    <div class="tool-content">
+                        <h3>Prompt Settings</h3>
+                        
+                        <div class="prompt-section">
+                            <h4>System Prompts</h4>
+                            <div class="prompt-list">
+                                ${Object.entries(data.prompts.system).map(([name, content]) => `
+                                    <div class="prompt-item">
+                                        <div class="prompt-name">${name}</div>
+                                        <textarea class="prompt-editor" 
+                                            data-type="system" 
+                                            data-name="${name}"
+                                            oninput="autoSavePrompt(this)">${content}</textarea>
+                                        <div class="prompt-actions">
+                                            <button onclick="resetPrompt('system', '${name}')" 
+                                                    class="prompt-reset">Reset to Default</button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div class="prompt-section">
+                            <h4>Tool Prompts</h4>
+                            <div class="prompt-list">
+                                ${Object.entries(data.prompts.tool).map(([name, content]) => `
+                                    <div class="prompt-item">
+                                        <div class="prompt-name">${name}</div>
+                                        <textarea class="prompt-editor" 
+                                            data-type="tool" 
+                                            data-name="${name}"
+                                            oninput="autoSavePrompt(this)">${content}</textarea>
+                                        <div class="prompt-actions">
+                                            <button onclick="resetPrompt('tool', '${name}')" 
+                                                    class="prompt-reset">Reset to Default</button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div class="prompt-section">
+                            <h4>Response Length</h4>
+                            <div class="slider-container">
+                                <input type="range" id="max-words" 
+                                       min="10" max="250" value="50" step="10"
+                                       oninput="updateWordLimit(this.value)">
+                                <span id="word-limit-value">50 words</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            `;
-            toolInfo.classList.add('active');
+                `;
+                toolInfo.classList.add('active');
+            } catch (error) {
+                console.error('Error loading prompts:', error);
+                toolInfo.innerHTML = `
+                    <div class="tool-content">
+                        <h3>Prompt Settings</h3>
+                        <p>Error loading prompt information</p>
+                    </div>
+                `;
+                toolInfo.classList.add('active');
+            }
             return;
         }
 
@@ -495,4 +682,123 @@ document.addEventListener('DOMContentLoaded', function() {
         messageInput.value = templates[template] || '';
         messageInput.focus();
     }
+
+    // Lisää uudet apufunktiot
+    async function setPrompt(type, name) {
+        try {
+            const response = await fetch('/api/prompts/set', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ type, name })
+            });
+            const data = await response.json();
+            if (data.status === 'success') {
+                // Näytä pieni ilmoitus onnistumisesta
+                const button = event.target;
+                const originalText = button.textContent;
+                button.textContent = 'Active';
+                button.classList.add('active');
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('active');
+                }, 1500);
+            }
+        } catch (error) {
+            console.error('Error setting prompt:', error);
+        }
+    }
+
+    function updateWordLimit(value) {
+        document.getElementById('word-limit-value').textContent = `${value} words`;
+        // Tallenna arvo backendille
+        fetch('/api/settings/word_limit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ limit: parseInt(value) })
+        }).catch(error => console.error('Error updating word limit:', error));
+    }
+
+    // Lisää uudet funktiot promptien käsittelyyn
+    let saveTimeout;
+
+    async function autoSavePrompt(textarea) {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(async () => {
+            const type = textarea.dataset.type;
+            const name = textarea.dataset.name;
+            const content = textarea.value;
+            
+            try {
+                const response = await fetch('/api/prompts/set', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ type, name, content })
+                });
+                const data = await response.json();
+                if (data.status === 'success') {
+                    // Näytä pieni tallennusindikaattori
+                    const indicator = document.createElement('div');
+                    indicator.className = 'save-indicator';
+                    indicator.textContent = 'Saved';
+                    textarea.parentNode.appendChild(indicator);
+                    setTimeout(() => indicator.remove(), 1500);
+                }
+            } catch (error) {
+                console.error('Error saving prompt:', error);
+            }
+        }, 1000); // Odota 1 sekunti ennen tallennusta
+    }
+
+    async function resetPrompt(type, name) {
+        try {
+            const response = await fetch('/api/prompts/reset', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ type, name })
+            });
+            const data = await response.json();
+            if (data.status === 'success') {
+                // Päivitä textarea
+                const textarea = document.querySelector(
+                    `.prompt-editor[data-type="${type}"][data-name="${name}"]`
+                );
+                if (textarea) {
+                    textarea.value = data.prompt;
+                }
+            }
+        } catch (error) {
+            console.error('Error resetting prompt:', error);
+        }
+    }
+
+    async function updateDebugStatus() {
+        try {
+            const debugInfo = await fetch('/api/debug/info').then(r => r.json());
+            const debugButton = document.querySelector('.tool-button[data-tool="debug"]');
+            
+            if (debugInfo.stats.error_count > 0) {
+                debugButton.classList.add('has-errors');
+                debugButton.dataset.count = debugInfo.stats.error_count;
+            } else {
+                debugButton.classList.remove('has-errors');
+                debugButton.removeAttribute('data-count');
+            }
+        } catch (error) {
+            console.error('Error updating debug status:', error);
+        }
+    }
+
+    // Päivitä debug-status säännöllisesti
+    setInterval(updateDebugStatus, 5000);
+
+    // Päivitä myös heti kun sivu latautuu
+    document.addEventListener('DOMContentLoaded', updateDebugStatus);
 });

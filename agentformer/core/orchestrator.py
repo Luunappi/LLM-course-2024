@@ -13,6 +13,8 @@ from core.messaging import MessageBus, EventType, Message
 from tools.prompt_tool import PromptTool
 from tools.model_tool import ModelTool
 from tools.chat_tool import ChatTool
+from tools.debug_tool import DebugTool
+from tools.system_tool import SystemTool
 
 # DEBUG: Konfiguroi debug-loggaus
 logger = logging.getLogger(__name__)
@@ -38,6 +40,8 @@ class AgentFormerOrchestrator:
             self.prompt_tool = PromptTool()
             self.model_tool = ModelTool()
             self.chat_tool = ChatTool()
+            self.debug_tool = DebugTool()
+            self.system_tool = SystemTool()
 
             # Rekisteröi perusviestien käsittelijät
             self._register_message_handlers()

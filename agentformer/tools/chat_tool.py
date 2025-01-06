@@ -70,22 +70,27 @@ class ChatTool:
         """Format response text to HTML"""
         lines = text.split("\n")
         formatted_lines = []
+        has_title = False
 
         for line in lines:
             line = line.strip()
             if not line:
                 continue
 
-            # Otsikko (alkaa sanalla "Title:" tai on ensimmäinen ei-tyhjä rivi)
-            if line.lower().startswith("title:") or not formatted_lines:
+            # Tarkista onko otsikko
+            if line.lower().startswith("title:") or (
+                not formatted_lines and ":" in line
+            ):
                 title = line.replace("Title:", "").strip()
                 formatted_lines.append(f"<h3>{title}</h3>")
+                has_title = True
                 continue
 
-            # Käsittele lihavoinnit (**text**)
-            line = line.replace("**", "<b>", 1)
-            while "**" in line:
-                line = line.replace("**", "</b>", 1)
+            # Käsittele lihavoinnit vain jos on otsikko
+            if has_title:
+                line = line.replace("**", "<b>", 1)
+                while "**" in line:
+                    line = line.replace("**", "</b>", 1)
 
             # Bulletpoint
             if line.startswith("- "):

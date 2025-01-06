@@ -165,6 +165,78 @@ def clear_chat_history():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/prompts", methods=["GET"])
+def get_prompts():
+    """Get all available prompts"""
+    try:
+        prompts = orchestrator.prompt_tool.list_prompts()
+        return jsonify({"prompts": prompts})
+    except Exception as e:
+        logger.error(f"Error getting prompts: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/prompts/set", methods=["POST"])
+def set_prompt():
+    """Set active prompt"""
+    try:
+        data = request.get_json()
+        success = orchestrator.prompt_tool.set_prompt(data["type"], data["name"])
+        return jsonify({"status": "success" if success else "error"})
+    except Exception as e:
+        logger.error(f"Error setting prompt: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/prompts/reset", methods=["POST"])
+def reset_prompt():
+    """Reset prompt to default value"""
+    try:
+        data = request.get_json()
+        success = orchestrator.prompt_tool.reset_to_default(data["type"], data["name"])
+        if success:
+            prompt = orchestrator.prompt_tool.get_prompt(data["type"])
+            return jsonify({"status": "success", "prompt": prompt})
+        return jsonify({"error": "Failed to reset prompt"}), 400
+    except Exception as e:
+        logger.error(f"Error resetting prompt: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/settings/word_limit", methods=["POST"])
+def set_word_limit():
+    """Set max words for responses"""
+    try:
+        data = request.get_json()
+        orchestrator.set_word_limit(data["limit"])
+        return jsonify({"status": "success"})
+    except Exception as e:
+        logger.error(f"Error setting word limit: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/system/stats", methods=["GET"])
+def get_system_stats():
+    """Get system performance statistics"""
+    try:
+        stats = orchestrator.system_tool.get_timing_stats()
+        return jsonify(stats)
+    except Exception as e:
+        logger.error(f"Error getting system stats: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/debug/info", methods=["GET"])
+def get_debug_info():
+    """Get debug information"""
+    try:
+        debug_info = orchestrator.debug_tool.get_debug_info()
+        return jsonify(debug_info)
+    except Exception as e:
+        logger.error(f"Error getting debug info: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 # ... muu koodi ...
 
 if __name__ == "__main__":

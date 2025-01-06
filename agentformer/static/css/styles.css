@@ -109,6 +109,13 @@ body {
     background-color: #2D2E3A;
     border-top: 1px solid #565869;
     padding: 16px;
+    position: fixed;
+    bottom: 60px;
+    left: 0;
+    right: 0;
+    max-height: 50vh;
+    overflow-y: auto;
+    z-index: 100;
     display: none;
 }
 
@@ -123,6 +130,11 @@ body {
     padding: 8px 16px;
     background-color: #2D2E3A;
     border-top: 1px solid #565869;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 101;
 }
 
 .tool-button {
@@ -577,4 +589,332 @@ body {
     color: #ECECF1;
     font-size: 14px;
     resize: vertical;
+}
+
+/* Prompt panel styles */
+.prompt-section {
+    margin-bottom: 20px;
+}
+
+.prompt-section h4 {
+    color: #ECECF1;
+    margin: 16px 0 8px 0;
+    font-size: 14px;
+}
+
+.prompt-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.prompt-item {
+    background: #40414F;
+    border: 1px solid #565869;
+    border-radius: 6px;
+    padding: 12px;
+}
+
+.prompt-name {
+    color: #ECECF1;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.prompt-content {
+    color: #8E8EA0;
+    font-size: 13px;
+    margin-bottom: 8px;
+    white-space: pre-wrap;
+    max-height: 60px;
+    overflow-y: auto;
+}
+
+.prompt-select {
+    background: #2D2E3A;
+    border: 1px solid #565869;
+    border-radius: 4px;
+    color: #ECECF1;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.prompt-select:hover {
+    background: #40414F;
+}
+
+.prompt-select.active {
+    background: #0C4A6E;
+    border-color: #0C4A6E;
+}
+
+/* Slider styles */
+.slider-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+input[type="range"] {
+    flex: 1;
+    height: 4px;
+    background: #40414F;
+    border-radius: 2px;
+    appearance: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: #0C4A6E;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+#word-limit-value {
+    color: #8E8EA0;
+    font-size: 13px;
+    min-width: 70px;
+}
+
+.prompt-editor {
+    width: 100%;
+    min-height: 80px;
+    padding: 8px;
+    margin: 8px 0;
+    background: #2D2E3A;
+    border: 1px solid #565869;
+    border-radius: 4px;
+    color: #ECECF1;
+    font-size: 13px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.prompt-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.prompt-reset {
+    padding: 4px 8px;
+    background: #374151;
+    border: 1px solid #565869;
+    border-radius: 4px;
+    color: #9CA3AF;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.prompt-reset:hover {
+    background: #4B5563;
+    color: #ECECF1;
+}
+
+.save-indicator {
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    background: #0C4A6E;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+/* System info styles */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+    margin: 16px 0;
+}
+
+.metric {
+    background: #40414F;
+    padding: 16px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.metric-value {
+    font-size: 24px;
+    font-weight: 500;
+    color: #ECECF1;
+    margin-bottom: 4px;
+}
+
+.metric-label {
+    font-size: 12px;
+    color: #8E8EA0;
+}
+
+.steps-timeline {
+    margin: 16px 0;
+}
+
+.timeline-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 8px;
+    border-left: 2px solid #565869;
+    margin-left: 16px;
+}
+
+.step-time {
+    min-width: 60px;
+    color: #8E8EA0;
+    font-size: 12px;
+}
+
+.step-name {
+    color: #ECECF1;
+    margin: 0 8px;
+}
+
+.step-details {
+    font-size: 12px;
+    color: #8E8EA0;
+    margin-left: 16px;
+}
+
+/* Debug info styles */
+.debug-stats {
+    display: flex;
+    gap: 16px;
+    margin: 16px 0;
+}
+
+.stat-item {
+    background: #40414F;
+    padding: 12px;
+    border-radius: 6px;
+    flex: 1;
+}
+
+.stat-item.error {
+    border-left: 3px solid #EF4444;
+}
+
+.stat-item.warning {
+    border-left: 3px solid #F59E0B;
+}
+
+.debug-events {
+    margin-top: 24px;
+    max-height: 400px;  /* Rajoita maksimikorkeus */
+    overflow-y: auto;   /* Lisää scrollbar tarvittaessa */
+    padding-right: 10px; /* Tilaa scrollbarille */
+}
+
+/* Scrollbarin tyylit */
+.debug-events::-webkit-scrollbar {
+    width: 8px;
+}
+
+.debug-events::-webkit-scrollbar-track {
+    background: #2D2E3A;
+    border-radius: 4px;
+}
+
+.debug-events::-webkit-scrollbar-thumb {
+    background: #565869;
+    border-radius: 4px;
+}
+
+.debug-events::-webkit-scrollbar-thumb:hover {
+    background: #666;
+}
+
+.debug-event {
+    margin: 8px 0;
+    padding: 12px;
+    background: #2D2E3A;
+    border-radius: 6px;
+    border-left: 3px solid #565869;
+}
+
+.debug-event.error {
+    border-left-color: #EF4444;
+}
+
+.debug-event.warning {
+    border-left-color: #F59E0B;
+}
+
+.event-header {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+.event-time {
+    color: #8E8EA0;
+}
+
+.event-level {
+    font-weight: 500;
+}
+
+.event-component {
+    color: #8E8EA0;
+}
+
+.event-message {
+    color: #ECECF1;
+    margin-bottom: 8px;
+}
+
+.event-details pre {
+    font-size: 12px;
+    color: #8E8EA0;
+    margin: 0;
+    white-space: pre-wrap;
+}
+
+/* Debug tool button */
+.tool-button[data-tool="debug"] {
+    position: relative;
+}
+
+.tool-button[data-tool="debug"]::after {
+    content: attr(data-count);
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #EF4444;
+    color: white;
+    font-size: 10px;
+    padding: 2px 4px;
+    border-radius: 10px;
+    display: none;
+}
+
+.tool-button[data-tool="debug"].has-errors::after {
+    display: block;
+}
+
+.component-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+    margin: 8px 0;
+}
+
+.component-item {
+    background: #40414F;
+    padding: 8px 12px;
+    border-radius: 4px;
+    color: #ECECF1;
+    font-size: 13px;
+    text-align: center;
 } 

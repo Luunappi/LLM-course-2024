@@ -1,4 +1,29 @@
-"""System monitoring tool for AgentFormer"""
+"""System monitoring tool for AgentFormer
+
+This tool provides performance monitoring and timing functionality for the AgentFormer system.
+It tracks various metrics during message processing:
+
+- Execution time of different processing steps
+- Total processing time per session
+- Model usage information
+- Detailed timing statistics for system analysis
+
+The tool is implemented as a singleton to ensure consistent timing across the application.
+
+Example usage:
+    system_tool = SystemTool()
+    system_tool.start_timing()
+    system_tool.add_step("tokenization", 0.5, {"tokens": 150})
+    system_tool.add_step("model_inference", 2.3, {"model": "gpt-4"})
+    system_tool.end_timing()
+    stats = system_tool.get_timing_stats()
+
+Key features:
+- Session-based timing
+- Step-by-step performance tracking
+- Model usage monitoring
+- Detailed timing statistics
+"""
 
 import logging
 from typing import Dict, List, Any
@@ -63,12 +88,37 @@ class SystemTool:
         )
 
     def get_timing_stats(self) -> Dict[str, Any]:
-        """Get current timing statistics"""
-        return {
+        """Get current timing statistics with additional metrics"""
+        stats = {
+            "total_time": self._current_session["total_time"],
             "steps": [
                 {"step": step.step, "time": step.time, "details": step.details}
                 for step in self._current_session["steps"]
             ],
-            "total_time": self._current_session["total_time"],
             "model_used": self._current_session["model_used"],
+            "additional_metrics": {
+                "memory_usage": self._get_memory_usage(),
+                "active_components": self._get_active_components(),
+                "uptime": self._get_uptime(),
+            },
         }
+        return stats
+
+    def _get_memory_usage(self) -> Dict[str, float]:
+        """Get current memory usage statistics"""
+        import psutil
+
+        process = psutil.Process()
+        memory_info = process.memory_info()
+        return {
+            "rss": memory_info.rss / 1024 / 1024,  # MB
+            "vms": memory_info.vms / 1024 / 1024,  # MB
+        }
+
+    def _get_active_components(self) -> List[str]:
+        """Get list of currently active system components"""
+        return ["MessageBus", "MemoryManager", "ChatTool", "ModelTool", "PromptTool"]
+
+    def _get_uptime(self) -> float:
+        """Get system uptime in seconds"""
+        return time() - self._current_session["start_time"]
