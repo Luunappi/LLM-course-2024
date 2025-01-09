@@ -67,44 +67,93 @@ class ChatTool:
             return {"error": str(e)}
 
     def _format_response(self, text: str) -> str:
-        """Format response text to HTML"""
+        """Format response text to HTML with improved markdown support"""
         lines = text.split("\n")
         formatted_lines = []
-        has_title = False
+        in_list = False
+        in_code_block = False
 
         for line in lines:
             line = line.strip()
             if not line:
+                if in_list:
+                    formatted_lines.append("</ul>")
+                    in_list = False
+                formatted_lines.append("<br>")
                 continue
 
-            # Tarkista onko otsikko
-            if line.lower().startswith("title:") or (
-                not formatted_lines and ":" in line
-            ):
-                title = line.replace("Title:", "").strip()
-                formatted_lines.append(f"<h3>{title}</h3>")
-                has_title = True
+            # Code blocks
+            if line.startswith("```"):
+                if in_code_block:
+                    formatted_lines.append("</code></pre>")
+                    in_code_block = False
+                else:
+                    language = line[3:].strip()
+                    formatted_lines.append(f'<pre><code class="language-{language}">')
+                    in_code_block = True
                 continue
 
-            # Käsittele lihavoinnit vain jos on otsikko
-            if has_title:
-                line = line.replace("**", "<b>", 1)
-                while "**" in line:
-                    line = line.replace("**", "</b>", 1)
+            if in_code_block:
+                formatted_lines.append(line)
+                continue
 
-            # Bulletpoint
-            if line.startswith("- "):
-                formatted_lines.append(f"• {line[2:]}")
+            # Headers
+            if line.startswith("#"):
+                level = len(line.split()[0])  # Count #'s
+                title = line[level:].strip()
+                formatted_lines.append(f"<h{level}>{title}</h{level}>")
+                continue
 
-            # Numeroitu kohta
+            # Lists
+            if line.startswith("- ") or line.startswith("* "):
+                if not in_list:
+                    formatted_lines.append("<ul>")
+                    in_list = True
+                formatted_lines.append(f"<li>{line[2:]}</li>")
+                continue
             elif line[0].isdigit() and ". " in line[:4]:
-                formatted_lines.append(line)
+                num, content = line.split(". ", 1)
+                formatted_lines.append(
+                    f"<div class='numbered-item'>{num}. {content}</div>"
+                )
+                continue
+            elif in_list:
+                formatted_lines.append("</ul>")
+                in_list = False
 
-            # Tavallinen teksti
-            else:
-                formatted_lines.append(line)
+            # Inline formatting
+            line = line.replace("**", "<strong>", 1)
+            while "**" in line:
+                line = line.replace("**", "</strong>", 1)
 
-        return "<br>".join(formatted_lines)
+            line = line.replace("*", "<em>", 1)
+            while "*" in line:
+                line = line.replace("*", "</em>", 1)
+
+            line = line.replace("`", "<code>", 1)
+            while "`" in line:
+                line = line.replace("`", "</code>", 1)
+
+            # Links
+            while "[" in line and "](" in line and ")" in line:
+                start = line.find("[")
+                mid = line.find("](")
+                end = line.find(")", mid)
+                if start != -1 and mid != -1 and end != -1:
+                    text = line[start + 1 : mid]
+                    url = line[mid + 2 : end]
+                    line = (
+                        line[:start] + f'<a href="{url}">{text}</a>' + line[end + 1 :]
+                    )
+                else:
+                    break
+
+            formatted_lines.append(f"<p>{line}</p>")
+
+        if in_list:
+            formatted_lines.append("</ul>")
+
+        return "\n".join(formatted_lines)
 
     def _update_history(self, prompt: str, response: str) -> None:
         """Update conversation history"""

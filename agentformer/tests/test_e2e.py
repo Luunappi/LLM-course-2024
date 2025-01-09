@@ -1,18 +1,26 @@
-from playwright.sync_api import Page, expect
+import pytest
+import os
+from flask import Flask
+import io
+from agentformer.web_gui import app
 
 
-def test_chat_interaction(page: Page):
-    # Avaa sivu
-    page.goto("http://localhost:5001")
+def test_rag_e2e(client):
+    # 1) Lataa pieni teksti (dummy)
+    dummy_text = b"Testataan RAG-hakua. Toinen lause. Kolmas lause."
 
-    # Kirjoita viesti
-    page.fill("#message-input", "Test message")
+    res_upload = client.post(
+        "/api/rag/upload", data={"file": (io.BytesIO(dummy_text), "dummy.txt")}
+    )
+    assert res_upload.status_code == 200, f"Upload failure: {res_upload.data}"
 
-    # Lähetä viesti
-    page.click("#send-button")
+    # 2) Kysy query
+    payload = {"query": "Mitä testataan?"}
+    res_query = client.post("/api/rag/query", json=payload)
+    assert res_query.status_code == 200, f"Query failure: {res_query.data}"
 
-    # Tarkista että viesti näkyy
-    expect(page.locator(".user-message")).to_contain_text("Test message")
-
-    # Odota vastausta
-    expect(page.locator(".bot-message")).to_be_visible()
+    json_data = res_query.get_json()
+    assert "result" in json_data, "Ei 'result'-avainta"
+    assert "response" in json_data["result"], "Ei 'response'-avainta resultissa"
+    assert len(json_data["result"]["response"]) > 0, "Tyhjä vastaus RAG-haulta"
+    print("RAG e2e -testi suoritettu onnistuneesti")

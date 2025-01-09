@@ -28,7 +28,7 @@ OPENAI_API_KEY=your-api-key-here
 4. Käynnistä sovellus:
 ```bash
 cd agentformer
-python agentformer_web.py
+python web_gui.py
 ```
 
 ## Kansiorakenne
@@ -49,36 +49,36 @@ agentformer/
 │ ├── hierarchical.py # Hierarkkinen muisti
 │ └── memory_manager.py # Muistin hallinta
 │
-├── ui_components/ # Käyttöliittymäkomponentit
-│ ├── __init__.py
-│ ├── model_module.py # Mallien hallinta
-│ ├── static/ # Staattiset resurssit
-│ │ ├── css/ # Tyylitiedostot
-│ │ ├── js/ # JavaScript
-│ │ └── images/ # Kuvat ja ikonit
-│ └── templates/ # HTML-templatet
-│
 ├── tools/ # Työkalumoduulit
 │ ├── __init__.py
-│ ├── diagram_tool.py # Kaaviotyökalu
-│ └── rag_tool.py # RAG-toiminnallisuus
+│ ├── model_tool.py # LLM-mallien käsittely
+│ ├── rag_tool.py # RAG-toiminnallisuus
+│ ├── system_tool.py # Järjestelmätyökalut
+│ └── tests/ # Testityökalut ja skriptit
+│     ├── check_chunks.py
+│     ├── test_query.py
+│     ├── index_pdf.py
+│     ├── check_metadata.py
+│     └── test_metadata.py
 │
-├── config/ # Konfiguraatiotiedostot
-│ └── api_config.json
+├── static/ # Web-käyttöliittymän staattiset tiedostot
+│ ├── css/ # Tyylitiedostot
+│ ├── js/ # JavaScript
+│ └── images/ # Kuvat ja ikonit
 │
-├── tests/ # Testit
-│ ├── __init__.py
-│ ├── conftest.py # Testien konfiguraatio
-│ ├── test_basic.py
-│ ├── test_e2e.py # End-to-end testit
-│ ├── test_evaluation.py # Evaluoinnin testit
-│ └── test_openai_api.py # OpenAI API testit
+├── templates/ # HTML-templatet
 │
-├── agentformer_web.py # Web-sovelluksen päämoduuli
-├── pytest.ini # Pytest-konfiguraatio
+├── vector_database/ # Vektoritietokanta
+│ ├── faiss_index.bin # FAISS-indeksi
+│ └── faiss_metadata.json # Metatiedot
+│
+├── logs/ # Lokitiedostot
+│ └── debug.log
+│
+├── web_gui.py # Web-käyttöliittymä ja HTTP-rajapinnat
+├── setup.py # Projektin asetustiedosto
 ├── requirements.txt # Projektin riippuvuudet
 ├── test_requirements.txt # Testien riippuvuudet
-├── debug.log # Debug-loki
 └── README.md # Tämä dokumentti
 
 ## Keskeiset Toiminnot
@@ -95,7 +95,7 @@ agentformer/
 
 6. **Tokenien seuranta**: Agentti raportoi kussakin viestissä käytetyt tokenit ja laskee kustannusarvion, jolloin kehittäjä pysyy perillä yllätyskuluista.
 
-7. **Järjestelmäpromptien hallinta**: Mahdollistaa erilaisten “systeemitason” alustuspromptien ja työkalujen valintapromptien käytön.
+7. **Järjestelmäpromptien hallinta**: Mahdollistaa erilaisten "systeemitason" alustuspromptien ja työkalujen valintapromptien käytön.
 
 ## Arkkitehtuuri
 
@@ -122,7 +122,7 @@ AgentFormer on rakennettu kerroksittaiseksi järjestelmäksi, jossa Orchestrator
    Vastaa keskustelun ohjauksesta (komponentti nimeltä AgentFormerOrchestrator). Se reitittää viestejä agenttien ja työkalujen välillä sekä koordinoi mallien käyttöä.
 
 2. **Memory Manager**  
-   Tallentaa keskusteluhistorian ja palvelee “pitkänä muistina.” Sen avulla malli pystyy hyödyntämään monimutkaisempia käyttäjäkonteksteja ja hakemaan aiemmin kerrottuja tietoja.
+   Tallentaa keskusteluhistorian ja palvelee "pitkänä muistina." Sen avulla malli pystyy hyödyntämään monimutkaisempia käyttäjäkonteksteja ja hakemaan aiemmin kerrottuja tietoja.
 
 3. **Model Module**  
    Käsittelee useita eri mallikonfiguraatioita (esim. GPT-4o-min, o1-mini ja o1). Moduulista säädetään mm. lämpötilaa, token-rajoja ja muita parametreja. Se vastaa myös avoimen rajapinnan kutsuista (OpenAI API).
@@ -140,8 +140,8 @@ AgentFormer on rakennettu kerroksittaiseksi järjestelmäksi, jossa Orchestrator
 
 Alta löytyy tärkeimmät kansiot ja tiedostot yhden lauseen selitteillä:
 
-- **agentformer/agentformer_web.py**  
-  Sisältää Flask-sovelluksen juoksevan koodin ja reitit HTTP-pyyntöihin (mm. chat, upload, update_model).
+- **agentformer/web_gui.py**  
+  Web-käyttöliittymä ja HTTP-rajapinnat Flask-sovellukselle.
 
 - **agentformer/core/ceval.py**  
   Ydinlogiikkaa evaluointeihin ja laskentatehtäviin liittyen (esim. kontekstin käsittelyyn).
@@ -357,6 +357,70 @@ Asetukset optimoivat:
 - Lämpötilan (temperature)
 - Maksimi token-määrän
 - Mallin valinnan tehtävän mukaan
+
+### RAG-toteutus
+
+AgentFormer käyttää kahta erillistä mallia RAG-toiminnallisuudessa:
+
+1. **SBERT (Sentence-BERT)**
+   - Malli: paraphrase-multilingual-mpnet-base-v2
+   - Käyttötarkoitus: Dokumenttien ja kyselyjen muuntaminen vektorimuotoon
+   - Tukee suomea ja muita kieliä
+   - Vektorin dimensio: 768
+
+2. **OpenAI Ada**
+   - Malli: text-ada-002
+   - Käyttötarkoitus: Vastausten generointi löydetyn kontekstin perusteella
+   - Hyvä suomen kielen tuki
+   - Optimoitu temperature: 0.3
+
+RAG-prosessi toimii seuraavasti:
+1. Dokumentti chunkataan sopivan kokoisiin osiin (500 tokenia, 50 tokenin overlap)
+2. SBERT luo embeddingin jokaiselle chunkille
+3. FAISS indeksoi embeddingin tehokasta hakua varten
+4. Kyselyn saapuessa SBERT luo embedding kyselylle
+5. FAISS hakee relevanteimmat chunkit
+6. Ada generoi vastauksen löydetyn kontekstin perusteella
+
+## FAISS
+- Yhden sivun keskimääräinen koko: 436,783 / 130 ≈ 3,360 merkkiä
+- Chunkkeja per sivu: 2,376 / 130 ≈ 18.3 chunkkia
+- Muistinkäyttö per sivu:
+    - Embeddings: 18.3 3 KB ≈ 55 KB
+    - Metadata: 18.3 0.5 KB ≈ 9 KB
+    - Yhteensä: ~64 KB per sivu
+
+FAISS käyttää Facebook AI:n kehittämää tehokasta indeksointia, joka pystyy käsittelemään miljoonia vektoreita. Käytännön rajoitukset tulevat lähinnä käytettävissä olevasta RAM-muistista.
+
+Olettaen 8 GB RAM-muistia FAISS-indeksille:
+- 8 GB = 8,000,000 KB
+- 8,000,000 KB / 64 KB ≈ 125,000 sivua
+
+Eli nykyisellä toteutuksella FAISS pystyisi teoriassa käsittelemään noin 125,000 sivua tekstiä. 
+Käytännössä suosittelen pitämään määrän alle 50,000 sivun parempaa suorituskykyä varten.
+
+
+
+## Tyyliopas
+
+### Värit
+- Aktiivisten elementtien väri: RGB 252/163/17 (#FCA311)
+
+### Fontit
+
+#### Ensisijaiset fontit
+1. Otsikot: Gotham Narrow
+   - Book
+   - Medium
+   - Bold
+   - Light (vain poikkeustapauksiin)
+   - Black (vain datan visualisointiin)
+
+2. Leipäteksti: Georgia Regular
+
+#### Korvaavat fontit (kun ensisijaiset eivät käytettävissä)
+- Otsikot: Arial
+- Leipäteksti: Georgia
 
 
 

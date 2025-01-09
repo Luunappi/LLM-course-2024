@@ -9,26 +9,13 @@ It tracks various metrics during message processing:
 - Detailed timing statistics for system analysis
 
 The tool is implemented as a singleton to ensure consistent timing across the application.
-
-Example usage:
-    system_tool = SystemTool()
-    system_tool.start_timing()
-    system_tool.add_step("tokenization", 0.5, {"tokens": 150})
-    system_tool.add_step("model_inference", 2.3, {"model": "gpt-4"})
-    system_tool.end_timing()
-    stats = system_tool.get_timing_stats()
-
-Key features:
-- Session-based timing
-- Step-by-step performance tracking
-- Model usage monitoring
-- Detailed timing statistics
 """
 
 import logging
 from typing import Dict, List, Any
 from dataclasses import dataclass
 from time import time
+import psutil
 
 logger = logging.getLogger(__name__)
 
@@ -106,8 +93,6 @@ class SystemTool:
 
     def _get_memory_usage(self) -> Dict[str, float]:
         """Get current memory usage statistics"""
-        import psutil
-
         process = psutil.Process()
         memory_info = process.memory_info()
         return {

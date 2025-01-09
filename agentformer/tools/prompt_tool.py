@@ -16,7 +16,7 @@ class PromptTool:
                 "rag": "Search through the provided documents to find relevant information...",
                 "diagram": "Create a diagram based on the following specifications...",
             },
-            "custom": {},  # Käyttäjän määrittelemät promptit
+            "custom": {},  # User defined prompts
         }
         self._active_prompts = {"system": "default", "tool": "default"}
 

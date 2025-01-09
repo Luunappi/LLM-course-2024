@@ -1,19 +1,29 @@
 """
 Memory Manager Module
 
-Keskitetty muistinhallinta, joka:
-- Koordinoi eri muistityyppien käyttöä
-- Tarjoaa yhtenäisen rajapinnan muistin käyttöön
-- Hallinnoi muistin elinkaarta
-- Mahdollistaa muistityypin valinnan käyttötarkoituksen mukaan
+This module provides centralized memory management for the system, acting as the main
+interface between the application and various memory implementations.
 
-Toimii rajapintana muun järjestelmän ja muistikomponenttien välillä.
+Key Responsibilities:
+- Coordinates usage of different memory types
+- Provides a unified interface for memory operations
+- Manages memory lifecycle and cleanup
+- Enables selection of appropriate memory type based on use case
+- Handles memory initialization and configuration
+
+Usage:
+    manager = MemoryManager(memory_type="hierarchical")
+    manager.store_memory({"content": "data"}, "episodic")
+    memories = manager.retrieve_memories("query")
+
+The manager abstracts away the complexity of different memory implementations,
+providing a clean and consistent interface for memory operations.
 """
 
 from typing import Dict, List, Any, Optional
 import logging
-from .base_memory import BaseMemory
-from .hierarchical import HierarchicalMemory
+from .memory_base import BaseMemory
+from .memory_hierarchical import HierarchicalMemory
 
 logger = logging.getLogger(__name__)
 
@@ -33,11 +43,20 @@ class MemoryManager:
         # Delegoi tallennus muistille
         self.memory.store(data, memory_type)
 
-    def retrieve_memories(
-        self, query: str, memory_type: Optional[str] = None
-    ) -> List[Dict]:
-        """Retrieve relevant memories"""
-        return self.memory.retrieve(query, memory_type)
+    def retrieve_memories(self, query: str, limit: int = None) -> List[Dict[str, Any]]:
+        """Retrieve memories based on query"""
+        try:
+            # Delegate to memory backend
+            memories = self.memory.retrieve(query)
+
+            # Apply limit if specified
+            if limit is not None:
+                memories = memories[:limit]
+
+            return memories
+        except Exception as e:
+            logger.error(f"Error retrieving memories: {e}")
+            return []
 
     def cleanup_old_memories(self) -> None:
         """Clean old memories"""

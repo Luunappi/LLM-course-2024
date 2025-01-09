@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AgentFormer Chat</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
@@ -15,53 +16,56 @@
         </div>
     </div>
 
-    <!-- Chat content -->
-    <div class="chat-content">
-        <!-- Messages will be inserted here -->
-    </div>
+    <!-- Main chat area -->
+    <div class="chat-content"></div>
 
     <!-- Input area -->
     <div class="input-area">
         <div class="input-icons">
-            <svg class="input-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-            </svg>
+            <button class="btn btn-outline-secondary" type="button">
+                <i class="bi bi-mic"></i>
+            </button>
         </div>
         <input type="text" id="message-input" placeholder="Message AgentFormer...">
         <button id="send-button">Send</button>
-        <button class="clear-history" data-tooltip="Delete all messages">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-            </svg>
-        </button>
-    </div>
-
-    <!-- Tool info panel -->
-    <div id="tool-info" class="tool-info">
-        <!-- Tool information will be displayed here -->
     </div>
 
     <!-- Bottom toolbar -->
     <div class="bottom-toolbar">
-        <button class="tool-button upload-icon">
-            <img src="{{ url_for('static', filename='images/upload.svg') }}" alt="Upload">
+        <button class="tool-button upload-icon" data-tool="upload">
+            <i class="bi bi-upload"></i> Upload
         </button>
-        <button class="tool-button web-icon">
-            <img src="{{ url_for('static', filename='images/globe.svg') }}" alt="Web">
+        <button class="tool-button" data-tool="model">
+            <i class="bi bi-cpu"></i> Model
         </button>
-        <div class="model-selector">
-            <button class="tool-button" data-tool="model">gpt-4o-mini</button>
-            <div id="model-dropdown" class="model-dropdown">
-                <!-- Mallivaihtoehdot lisätään tähän JavaScriptillä -->
-            </div>
-        </div>
-        <button class="tool-button" data-tool="tokens">Tokens</button>
-        <button class="tool-button" data-tool="system">System</button>
-        <button class="tool-button" data-tool="prompt">Prompt</button>
-        <button class="tool-button" data-tool="debug">Debug</button>
+        <button class="tool-button" data-tool="tokens">
+            <i class="bi bi-coin"></i> Tokens
+        </button>
+        <button class="tool-button" data-tool="system">
+            <i class="bi bi-gear"></i> System
+        </button>
+        <button class="tool-button" data-tool="prompt">
+            <i class="bi bi-file-text"></i> Prompts
+        </button>
+        <button class="tool-button" data-tool="debug">
+            <i class="bi bi-bug"></i> Debug
+        </button>
+        <button class="tool-button" data-tool="index-data">
+            <i class="bi bi-database"></i> Data
+        </button>
     </div>
 
+    <!-- Tool info panel -->
+    <div id="tool-info" class="tool-info"></div>
+
+    <!-- Progress bar -->
+    <div class="progress-container">
+        <div class="progress-bar"></div>
+        <div class="progress-text">Loading...</div>
+    </div>
+
+    <!-- Socket.IO client -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 </body>
 </html> 
