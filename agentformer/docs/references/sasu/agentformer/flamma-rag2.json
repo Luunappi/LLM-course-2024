@@ -1,0 +1,45 @@
+[
+  {
+    "command": "EMBEDDING",
+    "anchor": "minirag",
+    "file": "flamma-sitemap.json",
+    "state": "init",
+    "setstate":"init2"
+  },
+  {
+    "command": "HTML",
+    "html": "<h2>Welcome to the Intranet Assistance!</h2><p>Please tell us the topic you want help with (e.g., press releases, project budgeting, internal communications). We’ll find relevant content for you.</p>",
+    "state": "init2"
+  },
+  {
+    "command": "INPUT",
+    "event": "topic_input",
+    "anchor": "user_topic",
+    "text": "Enter your intranet topic of interest, so we can assist you with specialized guidance.",
+    "state": "init2",
+    "setstate": "topic_collected"
+  },
+  {
+    "command": "LLM-QUERY",
+    "prompt": "Based on the user topic: {user_topic}, and referencing the embedding {minirag}, please locate the relevant content and propose next steps. Omit embedding items that are out of scope. Summarize in a friendly tone writing to a professional audience. Do not make it personal. Format response in nice HTML. Possible feedback from prior analysis if this is repeated: {analysis_check}",
+    "rag": "{user_topic}",
+    "topk": 5,
+    "text": "Gather Relevant Content",
+    "anchor": "topic_analysis",
+    "scope": "user_topic minirag analysis_check",
+    "state": "topic_collected",
+    "model": "ollama/llama3.3",
+    "setstate": "final_display"
+  },
+  {
+    "command": "HTML",
+    "html": "<h3>Here is your intranet assistance summary:</h3><p>{topic_analysis}</p>",
+    "scope": "topic_analysis",
+    "state": "final_display"
+  },
+  {
+    "command": "TEXT",
+    "text": "Thank you! Please use the revised content for your intranet needs.",
+    "state": "final_display"
+  }
+]

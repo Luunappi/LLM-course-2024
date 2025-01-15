@@ -1,426 +1,311 @@
-# AgentFormer
+# AgentFormer - Kehittynyt Tekoälyagenttijärjestelmä
 
-AgentFormer on modulaarinen tekoälyagenttien kehitysalusta, jonka tavoitteena on yhdistää useita taustalla olevia kielimalleja (esimerkiksi GPT-4o-min, o1-mini ja o1) sekä monipuolisia työkaluja yhden kattavan keskustelualustan alle. 
+## Yleiskuvaus
 
-Sen avulla voit:
-- Keskustella eri kielimallien kanssa samassa ympäristössä
-- Laajentaa tai räätälöidä toiminnallisuutta erilaisten työkalumoduulien kautta
-- Tallentaa ja hyödyntää keskustelumuisteja sekä hallita kontekstia
-- Rakentaa järjestelmäpromptien avulla monenlaisia agentteja eri käyttötarkoituksiin
-- Seurata tokenien käyttöä ja laskea kustannuksia
-- Toteuttaa RAG-toiminnallisuutta (Retrieval-Augmented Generation) dokumenttien käsittelyä varten
+AgentFormer on monipuolinen tekoälyagenttijärjestelmä, joka yhdistää useita kielimalleja, muistinhallintaa ja erikoistuneita työkaluja luodakseen älykkään avustajan. Järjestelmä pystyy ymmärtämään, analysoimaan ja vastaamaan monimutkaisiin kyselyihin käyttäen RAG-teknologiaa (Retrieval Augmented Generation) ja erilaisia tekoälymalleja tarjotakseen tarkkoja, kontekstitietoisia vastauksia.
 
+### Keskeiset Ominaisuudet
 
-## Asennus ja käyttöönotto
+- **Usean Mallin Tuki**: Integroi useita tekoälymalleja (GPT-4, O1, mukautetut mallit) automaattisella mallivalinnalla
+- **Kehittynyt Muistinhallinta**: Toteuttaa sekä lyhyt- että pitkäkestoisen muistin tehokkaan tallennuksen ja haun
+- **RAG-Integraatio**: Käyttää kehittynyttä dokumenttien käsittelyä ja hakua
+- **Modulaarinen Työkalujärjestelmä**: Tarjoaa erikoistuneet työkalut eri tehtäviin
+- **Web-käyttöliittymä**: Selkeä ja responsiivinen graafinen käyttöliittymä
+- **Laajennettava Arkkitehtuuri**: Modulaarinen rakenne mahdollistaa uusien ominaisuuksien lisäämisen
 
-1. Kloonaa repositorio
-2. Asenna riippuvuudet:
-```bash
-cd agentformer
-pip install -r requirements.txt
+## Järjestelmän Rakenne
+
+### Kansiorakenne
 ```
-
-3. Luo .env-tiedosto ja lisää OpenAI API-avain:
-```
-OPENAI_API_KEY=your-api-key-here
-```
-
-4. Käynnistä sovellus:
-```bash
-cd agentformer
-python web_gui.py
-```
-
-## Kansiorakenne
-
 agentformer/
-├── core/ # Ydinkomponentit
-│ ├── __init__.py
-│ ├── ceval.py # Evaluointilogiikkaa
-│ ├── exceptions.py # Poikkeuksien käsittely
-│ ├── messaging.py # Viestinvälitysjärjestelmä
-│ ├── orchestrator.py # Pääorkestraattori
-│ └── triggermanagement.py # Triggerien hallinta
-│
-├── memory/ # Muistinhallinta
-│ ├── __init__.py
-│ ├── base_memory.py # Muistin perusluokka
-│ ├── distributed.py # Hajautettu muisti
-│ ├── hierarchical.py # Hierarkkinen muisti
-│ └── memory_manager.py # Muistin hallinta
-│
-├── tools/ # Työkalumoduulit
-│ ├── __init__.py
-│ ├── model_tool.py # LLM-mallien käsittely
-│ ├── rag_tool.py # RAG-toiminnallisuus
-│ ├── system_tool.py # Järjestelmätyökalut
-│ └── tests/ # Testityökalut ja skriptit
-│     ├── check_chunks.py
-│     ├── test_query.py
-│     ├── index_pdf.py
-│     ├── check_metadata.py
-│     └── test_metadata.py
-│
-├── static/ # Web-käyttöliittymän staattiset tiedostot
-│ ├── css/ # Tyylitiedostot
-│ ├── js/ # JavaScript
-│ └── images/ # Kuvat ja ikonit
-│
-├── templates/ # HTML-templatet
-│
-├── vector_database/ # Vektoritietokanta
-│ ├── faiss_index.bin # FAISS-indeksi
-│ └── faiss_metadata.json # Metatiedot
-│
-├── logs/ # Lokitiedostot
-│ └── debug.log
-│
-├── web_gui.py # Web-käyttöliittymä ja HTTP-rajapinnat
-├── setup.py # Projektin asetustiedosto
-├── requirements.txt # Projektin riippuvuudet
-├── test_requirements.txt # Testien riippuvuudet
-└── README.md # Tämä dokumentti
-
-## Keskeiset Toiminnot
-
-1. **Useita taustamalleja**: AgentFormerin modulariteetti mahdollistaa samanaikaisesti useamman kielimallin hallinnan. Voit helposti vaihtaa mallia tai ottaa käyttöön useita erilaisiin tehtäviin soveltuvia malleja.
-
-2. **Modulaarinen Arkkitehtuuri**: Ratkaisun ydin on joustavasti laajennettavissa. Jokainen työkalu tai agentin osa toimii omana moduulina, jonka voi lisätä tai poistaa tarpeen mukaan.
-
-3. **Muistinhallinta**: Keskustelumuistia (Memory Manager) hyödynnetään aiempien viestien ja kontekstin tallentamiseen. Tämä mahdollistaa rikkaamman ja syvemmän vuorovaikutuksen agentin kanssa.
-
-4. **RAG-toiminnallisuus**: Sivustolle voi ladata erilaisia tiedostoja (kuten PDF, TXT, MD), ja järjestelmä pystyy hyödyntämään niitä osana vastausten tuottamista.
-
-5. **Web-käyttöliittymä**: Sovellusta voi käyttää selaimessa. Käyttöliittymässä on tuki keskustelukomennoille, mallin valinnalle sekä tiedostojen lataamiselle.
-
-6. **Tokenien seuranta**: Agentti raportoi kussakin viestissä käytetyt tokenit ja laskee kustannusarvion, jolloin kehittäjä pysyy perillä yllätyskuluista.
-
-7. **Järjestelmäpromptien hallinta**: Mahdollistaa erilaisten "systeemitason" alustuspromptien ja työkalujen valintapromptien käytön.
-
-## Arkkitehtuuri
-
-### Työkalut
-
-Järjestelmä käyttää modulaarista työkaluarkkitehtuuria:
-
-- **ModelTool**: Mallien hallinta ja konfigurointi
-- **ChatTool**: Keskustelun hallinta ja vastausten generointi
-- **TokenTool**: Token-käytön seuranta ja laskenta
-- **SystemTool**: Järjestelmän suorituskyvyn monitorointi
-- **RAGTool**: Dokumenttipohjainen tiedonhaku
-- **PromptTool**: Promptien hallinta
-
-Jokainen työkalu:
-- On singleton-instanssi
-- Vastaa yhdestä selkeästä toiminnallisuudesta
-- Voidaan testata itsenäisesti
-- Voidaan konfiguroida erikseen
-
-AgentFormer on rakennettu kerroksittaiseksi järjestelmäksi, jossa Orchestrator toimii keskeisenä koordinaattorina kaikkien komponenttien välillä. Message Bus -järjestelmä mahdollistaa asynkronisen viestinvälityksen eri moduulien välillä, mikä tekee järjestelmästä skaalautuvan ja joustavan. Memory Manager ylläpitää kolmitasoista muistia (työmuisti, episodinen muisti ja semanttinen muisti), mikä mahdollistaa kontekstin säilymisen ja aiempien keskustelujen hyödyntämisen. Työkalumoduulit (Tools) ovat itsenäisiä komponentteja, jotka voidaan dynaamisesti ladata ja poistaa käytöstä tarpeen mukaan. Web-käyttöliittymä on toteutettu Flaskilla ja se kommunikoi Orchestratorin kanssa REST-rajapinnan kautta.
-
-1. **Orchestrator**  
-   Vastaa keskustelun ohjauksesta (komponentti nimeltä AgentFormerOrchestrator). Se reitittää viestejä agenttien ja työkalujen välillä sekä koordinoi mallien käyttöä.
-
-2. **Memory Manager**  
-   Tallentaa keskusteluhistorian ja palvelee "pitkänä muistina." Sen avulla malli pystyy hyödyntämään monimutkaisempia käyttäjäkonteksteja ja hakemaan aiemmin kerrottuja tietoja.
-
-3. **Model Module**  
-   Käsittelee useita eri mallikonfiguraatioita (esim. GPT-4o-min, o1-mini ja o1). Moduulista säädetään mm. lämpötilaa, token-rajoja ja muita parametreja. Se vastaa myös avoimen rajapinnan kutsuista (OpenAI API).
-
-4. **Message Bus**  
-   Mahdollistaa agenttien, muistinhallinnan ja työkalumoduulien välisen viestiliikenteen. Kytkeytyy Orchestratoriin ja huolehtii viestien välittämisestä oikeille osapuolille.
-
-5. **Tools**  
-   Joukkio erikoistyökaluja (kuten RAG, kaaviotyökalu, tms.), joiden avulla agentti laajentaa toiminnallisuuttaan. Nämä moduulit lisätään tarpeen mukaan Orchestratoriin.
-
-6. **Web UI**  
-   Flask-pohjainen käyttöliittymä tarjoaa selkeän tavan käyttää agenttia selaimessa. Käyttäjä voi syöttää kysymyksiä, ladata tiedostoja ja vaihtaa mallia suoraan selainikkunasta.
-
-## Tiedostorakenne
-
-Alta löytyy tärkeimmät kansiot ja tiedostot yhden lauseen selitteillä:
-
-- **agentformer/web_gui.py**  
-  Web-käyttöliittymä ja HTTP-rajapinnat Flask-sovellukselle.
-
-- **agentformer/core/ceval.py**  
-  Ydinlogiikkaa evaluointeihin ja laskentatehtäviin liittyen (esim. kontekstin käsittelyyn).
-
-- **agentformer/core/orchestrator.py**  
-  Pääorkestraattori, joka ohjaa viestinvälitystä agenttien ja työkalujen välillä.
-
-- **agentformer/tests/**  
-  Kokoelma testejä, joilla varmistetaan eri osien toimivuus (test_basic.py, test_e2e.py, test_openai_api.py jne.).
-
-- **agentformer/tools/diagram_tool.py**  
-  Laajennus, joka mahdollistaa kaavion tai diagrammin muodostamisen tai käsittelyn osana agentin toimintoja.
-
-- **agentformer/tools/rag_tool.py**  
-  RAG (Retrieval-Augmented Generation) -työkalumoduuli dokumenttien lukemiseen ja hankitun tiedon hyödyntämiseen vastauksissa.
-
-- **agentformer/ui_components/model_module.py**  
-  Model Module, joka hallinnoi kielimallien konfiguraatiota, API-kutsuja ja vastausten generointia.
-
-- **agentformer/static/**  
-  Kansio staattisille tiedostoille, kuten CSS-tyyleille, JavaScript-tiedostoille ja kuville.
-
-- **agentformer/templates/**  
-  HTML-pohjat Flask-käyttöliittymälle (chat.html, index.html).
-
-- **agentformer/config/api_config.json**  
-  Esimerkkikonfiguraatiot (esim. API-avaimet), joita käytetään mallikutsujen yhteydessä.
-
-- **agentformer/pytest.ini**  
-  Pytest-konfiguraatiotestausta varten (esim. asetukset kattavuusraportointiin yms.).
-
-- **agentformer/test_requirements.txt**  
-  Lista riippuvuuksista, jotka asennetaan testejä varten.
-
-- **agentformer/README.md**  
-  Tämä tiedosto, joka sisältää AgentFormerin yleiskuvauksen.
-
-- **agentformer/memory/memory_manager.py**  
-  Hallinnoi kolmitasoista muistijärjestelmää (työmuisti, episodinen muisti, semanttinen muisti) ja tarjoaa rajapinnan muistin käsittelyyn.
-
-- **agentformer/memory/memory_types.py**  
-  Määrittelee eri muistityyppien toteutukset ja niiden erityispiirteet.
-
-- **agentformer/memory/memory_operations.py**  
-  Sisältää toiminnot muistin hakuun, tallentamiseen ja päivittämiseen.
-
-- **agentformer/memory/memory_utils.py**  
-  Apufunktiot muistin käsittelyyn, kuten muistin siivoukseen ja optimointiin.
-
-- **agentformer/core/context.py**  
-  Hallinnoi keskustelukontekstia ja sen päivittämistä.
-
-## Lisätietoja
-
-AgentFormerin modulaarisuus tekee siitä joustavan alustan, joka soveltuu monenlaisiin luonnollisen kielen käsittelytehtäviin. Jokainen komponentti on suunniteltu laajennettavaksi, jotta kehittäjät voivat hyödyntää haluamiaan kielimalleja sekä liittää omia erikoistyökalujaan mukaan.
-
-## Työkalut ja modulaarinen arkkitehtuuri
-
-### Työkalujen periaatteet
-
-AgentFormer käyttää modulaarista työkaluarkkitehtuuria, jossa jokainen työkalu on itsenäinen komponentti omalla vastuualueellaan. Tämä lähestymistapa tarjoaa useita etuja:
-
-1. **Single Responsibility Principle**: Jokainen työkalu keskittyy yhteen tehtävään ja tekee sen hyvin
-2. **Helppo testattavuus**: Työkaluja voidaan testata erikseen muusta järjestelmästä
-3. **Uudelleenkäytettävyys**: Työkaluja voidaan käyttää eri konteksteissa ja sovelluksissa
-4. **Ylläpidettävyys**: Yksittäisen työkalun päivittäminen tai korjaaminen ei vaikuta muihin
-5. **Laajennettavuus**: Uusien työkalujen lisääminen on helppoa
-
-### Ydintyökalut
-
-#### TokenTool
-- **Tarkoitus**: Token-käytön laskenta ja seuranta
-- **Toiminnallisuudet**:
-  - Token-määrän laskenta teksteille
-  - Kustannusten laskenta mallikohtaisesti
-  - Käyttötilastojen ylläpito
-- **Perustelut**:
-  - Erottaa token-laskennan logiikan muusta sovelluksesta
-  - Mahdollistaa tarkan kustannusseurannan
-  - Helpottaa eri mallien käyttökustannusten vertailua
-
-#### WordLimitTool
-- **Tarkoitus**: Tekstin pituuden hallinta
-- **Toiminnallisuudet**:
-  - Tekstin katkaisu määriteltyyn sanamäärään
-  - Dynaaminen raja-arvojen hallinta
-  - Automaattinen tekstin tiivistys
-- **Perustelut**:
-  - Estää liian pitkät vastaukset
-  - Optimoi token-käyttöä
-  - Parantaa vastausten luettavuutta
-
-#### RAGTool
-- **Tarkoitus**: Dokumenttipohjainen tiedonhaku ja vastausten generointi
-- **Toiminnallisuudet**:
-  - Dokumenttien prosessointi ja indeksointi
-  - Semanttinen haku
-  - Kontekstuaalinen vastausten generointi
-- **Perustelut**:
-  - Mahdollistaa tarkat vastaukset dokumenttien pohjalta
-  - Vähentää hallusinaatioita
-  - Parantaa vastausten luotettavuutta
-
-#### DiagramTool
-- **Tarkoitus**: Visualisointien luonti
-- **Toiminnallisuudet**:
-  - Automaattinen kaaviotyypin valinta
-  - Datan muotoilu visualisointiin
-  - Interaktiivisten kaavioiden luonti
-- **Perustelut**:
-  - Parantaa tiedon ymmärrettävyyttä
-  - Mahdollistaa datan visuaalisen analyysin
-  - Tukee päätöksentekoa
-
-### Työkalujen integraatio
-
-Työkalut integroidaan järjestelmään orkestraattorin kautta:
-
-1. **Rekisteröinti**: Työkalut rekisteröidään orkestraattorille käynnistyksessä
-2. **Viestinvälitys**: Työkalut kommunikoivat MessageBus-järjestelmän kautta
-3. **Tilanvalvonta**: Orkestraattori valvoo työkalujen tilaa ja suoritusta
-
-### Esimerkki työkalun käytöstä
-
-```python
-# Esimerkki TokenTool-työkalun käytöstä
-from tools.token_tool import TokenTool
-
-token_tool = TokenTool()
-
-# Laske tokenit ja kustannus
-stats = token_tool.calculate_tokens("Analysoi tämä teksti", model="gpt-4")
-print(f"Tokens used: {stats['total_tokens']}")
-print(f"Cost: ${stats['cost']:.4f}")
-
-# Päivitä käyttötilastot
-token_tool.update_usage(stats)
-
-# Hae kokonaistilastot
-total_stats = token_tool.get_usage_stats()
-print(f"Total cost so far: ${total_stats['total_cost']:.4f}")
+├── core/                          
+│   ├── messaging.py              # Viestintäjärjestelmä (Singleton + Pub/Sub)
+│   └── orchestrator.py           # Pääkoordinaattori
+├── storage/                     
+│   └── memory/                  
+│       ├── backends/            # Muistivarastot
+│       │   ├── faiss_backend.py # Vektorivarasto FAISS-kirjastolla
+│       │   ├── cosmos_backend.py # Pilvivarasto CosmosDB:llä
+│       │   ├── hybrid_backend.py # Hybridivarasto (FAISS + Cosmos)
+│       │   └── local_json_store.py # Paikallinen JSON-varasto
+│       ├── cache/              # Välimuistin tiedostot
+│       ├── saved_files/        # Tallennetut dokumentit
+│       ├── vector_database/    # Vektoritietokanta
+│       └── memory_manager.py   # Muistinhallinnan koordinointi
+├── tools/                        # Erikoistuneet työkalut
+│   ├── core_tools/              # Keskeiset prosessointityökalut
+│   │   ├── model_tool.py        # Tekoälymallien hallinta ja vuorovaikutus
+│   │   ├── token_tool.py        # Token-käytön seuranta ja optimointi
+│   │   ├── system_tool.py       # Järjestelmäoperaatiot ja konfigurointi
+│   │   ├── prompt_tool.py       # Kehotteiden hallinta ja optimointi
+│   │   └── text_tool.py         # Tekstin prosessointi ja muokkaus
+│   ├── memory_tools/            # Muistinhallinta ja RAG
+│   │   ├── processing/          # Tekstin prosessointi
+│   │   │   ├── chunker.py      # Dokumenttien pilkkominen
+│   │   │   ├── embedder.py     # Tekstin vektorointi
+│   │   │   ├── indexer.py      # Dokumenttien indeksointi
+│   │   │   └── summarizer.py   # Dokumenttien tiivistäminen
+│   │   ├── storage/            # Tietovarastot
+│   │   │   ├── document_store.py # Dokumenttien tallennus
+│   │   │   └── vector_store.py   # Vektoritietokanta
+│   │   ├── conversation/        # Keskustelumuisti
+│   │   │   ├── short_term.py   # Lyhytkestoinen muisti
+│   │   │   ├── long_term.py    # Pitkäkestoinen muisti
+│   │   │   └── memory_chain.py # Muistiketjun hallinta
+│   │   └── rag_tool.py         # RAG-toiminnallisuuden pääluokka
+│   └── analysis_tools/          # Analyysityökalut
+│       ├── analyzer_tool.py     # Vuorovaikutuksen analyysi ja palaute
+│       └── debug_tool.py        # Virheenkorjaus ja monitorointi
+├── web/                        # Web-käyttöliittymä
+│   ├── api/                    # API-päätepisteet
+│   │   ├── rag_routes.py       # RAG-toiminnallisuuden reitit
+│   │   ├── conversation_routes.py # Keskustelutoiminnot
+│   │   └── analysis_routes.py  # Analytiikkatoiminnot
+│   ├── static/                 # Staattiset resurssit (CSS, JS, kuvat)
+│   │   ├── css/               # Tyylitiedostot
+│   │   ├── js/                # JavaScript-tiedostot
+│   │   └── images/            # Kuvat ja ikonit
+│   ├── templates/              # HTML-mallit käyttöliittymälle
+│   │   ├── chat/             # Keskustelunäkymät
+│   │   ├── analysis/         # Analytiikkanäkymät
+│   │   └── components/       # Uudelleenkäytettävät komponentit
+│   ├── sessions/              # Flask-sessiotiedostot
+│   └── web_gui.py             # Web-käyttöliittymän toteutus
+├── docs/                      # Dokumentaatio
+│   ├── api/                   # API-dokumentaatio
+│   ├── guides/               # Käyttöoppaat
+│   │   ├── setup/           # Asennusohjeet
+│   │   ├── usage/           # Käyttöohjeet
+│   │   └── development/     # Kehittäjäohjeet
+│   └── examples/             # Esimerkkikoodit
+│       ├── api/             # API-esimerkit
+│       ├── conversation/    # Keskusteluesimerkit
+│       └── analysis/        # Analyysiesimerkit
+├── tests/                     # Testit
+│   ├── unit/                  # Yksikkötestit komponenteille
+│   │   ├── tools/            # Työkalujen testit
+│   │   ├── memory/           # Muistin testit
+│   │   └── web/              # Web-komponenttien testit
+│   └── integration/           # Integraatiotestit järjestelmälle
+│       ├── conversation/      # Keskustelutestit
+│       ├── memory/           # Muistitestit
+│       └── api/              # API-testit
+├── .env                       # Ympäristömuuttujat
+├── requirements.txt           # Python-riippuvuudet
+├── setup.py                   # Asennuskonfiguraatio
+├── .gitignore                # Git-poissulkemissäännöt
+└── __init__.py               # Python-paketin alustus
 ```
 
-### Uuden työkalun lisääminen
+## Ydinkomponentit
 
-Uuden työkalun lisääminen järjestelmään:
+### Orkestraattori (Orchestrator)
+- Koordinoi järjestelmän komponentteja
+- Hallinnoi työkalujen valintaa ja suoritusta
+- Käsittelee kyselyiden analyysin ja vastausten generoinnin
+- Integroi muistinhallinnan ja mallien valinnan
 
-1. Luo uusi luokka tools/-hakemistoon
-2. Toteuta tarvittavat metodit (calculate, update, get_stats tms.)
-3. Rekisteröi työkalu orkestraattorissa
-4. Lisää tarvittavat testit
+### Muistinhallinta
+1. **Lyhytkestoinen Muisti**
+   - Hallinnoi aktiivisia keskusteluja
+   - Toteuttaa automaattisen tiivistämisen
+   - Käsittelee konteksti-ikkunan hallintaa
+   - Optimoi muistin käyttöä dynaamisesti
 
-## Mallit ja niiden käyttö
+2. **Pitkäkestoinen Muisti**
+   - Vektorivarasto FAISS:lla
+   - Dokumenttien arkistointi ja haku
+   - Semanttinen haku
+   - Tehokas indeksointi ja päivitys
 
-AgentFormer tukee useita kielimalleja eri käyttötarkoituksiin:
+3. **Muistiketju**
+   - Koordinoi lyhyt- ja pitkäkestoisen muistin välillä
+   - Hallinnoi muistisiirtymiä
+   - Toteuttaa siivouksen ja optimoinnin
+   - Varmistaa tiedon eheyden
 
-- **gpt-4o-mini (1x€)**
-  - Nopea ja edullinen perusmalli
-  - Soveltuu: chat, perustason tekstintuotanto
-  - Max tokens: 8192 (n. 6000 sanaa)
+### Mallien Hallinta
+- Tukee useita tekoälymalleja:
+  - O1: Kehittynyt päättelymalli (200K konteksti)
+  - O1-mini: Tehokas päättelymalli
+  - GPT-4o: Multimodaalinen malli
+  - GPT-4o-mini: Kustannustehokas perusmalli
+- Automaattinen mallivalinta tehtävän mukaan
+- Token-käytön seuranta ja optimointi
+- Mallikohtainen kehotteiden optimointi
 
-- **o1-mini (3x€)**
-  - Tarkka malli faktantarkistukseen
-  - Optimoitu tarkkuuteen matalalla lämpötilalla
-  - Max tokens: 2048 (n. 1500 sanaa)
+### Dokumenttien Käsittely
+1. **Indeksointi**
+   - Älykäs tekstin pilkkominen
+   - Vektorimuunnokset SentenceTransformers-kirjastolla
+   - Vektorivarasto FAISS:ssa
+   - Metatietojen hallinta
 
-- **gpt-4o (20x€)**
-  - Tehokas malli monimutkaisiin tehtäviin
-  - Erinomainen reasoning-kyky
-  - Max tokens: 1024 (n. 750 sanaa)
+2. **Haku**
+   - Semanttinen haku
+   - Hybridihaku (semanttinen + avainsanat)
+   - Kontekstitietoinen dokumenttien haku
+   - Relevanssin arviointi
 
-- **o1 (30x€)**
-  - Kehittynein malli vaativiin tehtäviin
-  - Tukee multimodaalista sisältöä
-  - Max tokens: 512 (n. 400 sanaa)
+### Analyysi ja Monitorointi
+- Vuorovaikutuksen analyysi
+- Suorituskyvyn seuranta
+- Automaattinen palautteen generointi
+- Debug-lokit ja virheenseuranta
+- Käyttöstatistiikan keräys
 
-Mallin voi vaihtaa käyttöliittymän oikeasta yläkulmasta. Hintakerroin (x€) näkyy mallin nimen perässä.
+## Käytetyt Teknologiat
 
-### Token-seuranta ja kustannukset
+### Tekoälymallit
+- OpenAI GPT-4 ja variantit
+- Mukautetut O1-mallit
+- SentenceTransformers vektorimuunnoksiin
+- BERT-pohjaiset luokittelumallit
 
-Järjestelmä seuraa token-käyttöä ja kustannuksia:
+### Tietovarastot
+- FAISS vektorivarastona
+- CosmosDB pilvitallennukseen
+- Paikallinen tiedostojärjestelmä dokumenteille
+- Redis välimuistina
 
-- Reaaliaikainen näkymä nykyisen viestin token-määrästä
-- Session kokonaiskäyttö malleittain
-- Kustannuslaskenta perustuen mallien hinnoitteluun
-- Token-käytön visualisointi käyttöliittymässä
+### Web-käyttöliittymä
+- Flask backend
+- WebSocket reaaliaikaiseen kommunikointiin
+- Moderni responsiivinen UI
+- REST API integraatioihin
 
-Esimerkki token-näkymästä:
+### Prosessointi
+- Sentence-Transformers vektorimuunnoksiin
+- NLTK tekstinkäsittelyyn
+- NumPy vektorioperaatioihin
+- Pandas datankäsittelyyn
+
+## Keskeiset Prosessit
+
+### Kyselyn Käsittely
+1. Käyttäjä lähettää kyselyn
+2. Orkestraattori analysoi kyselyn tyypin
+3. Valitaan sopivat työkalut ja mallit
+4. Haetaan relevantti konteksti muistista
+5. Generoidaan ja analysoidaan vastaus
+6. Tallennetaan tulokset muistiin
+7. Palautetaan vastaus käyttäjälle
+
+### Dokumenttien Käsittely
+1. Dokumentti ladataan
+2. Teksti esikäsitellään
+3. Sisältö pilkotaan älykkäästi
+4. Generoidaan vektorimuunnokset
+5. Vektorit tallennetaan FAISS:iin
+6. Tallennetaan metatiedot
+7. Generoidaan ja tallennetaan tiivistelmä
+
+### Muistinhallinta
+1. Uusi tieto käsitellään
+2. Lyhytkestoinen muisti päivitetään
+3. Automaattinen tiivistäminen tarvittaessa
+4. Vanha tieto arkistoidaan pitkäkestoiseen muistiin
+5. Suoritetaan säännöllinen siivous ja optimointi
+
+## Konfigurointi ja Asennus
+
+### Ympäristömuuttujat
+- Tekoälymallien API-avaimet
+- Tietovarastojen asetukset
+- Web-käyttöliittymän asetukset
+- Lokituksen asetukset
+- Suoritusympäristön määritykset
+
+### Mallien Konfigurointi
+- Mallien valintaparametrit
+- Token-käytön rajoitukset
+- Lämpötila ja muut generointiparametrit
+- Konteksti-ikkunoiden koot
+- Mallikohtaiset optimoinnit
+
+### Tietovarastojen Konfigurointi
+- Vektorivaraston asetukset
+- Dokumenttien tallennuspolut
+- Tietokantayhteydet
+- Varmuuskopioinnin asetukset
+- Välimuistin asetukset
+
+## Käyttö ja Integraatio
+
+### API-rajapinnat
+- Kyselyiden käsittely
+- Dokumenttien hallinta
+- Muistioperaatiot
+- Järjestelmän tilan seuranta
+- Analytiikka ja tilastot
+
+### Web-käyttöliittymä
+- Keskustelukäyttöliittymä
+- Dokumenttien hallinta
+- Järjestelmän tilan seuranta
+- Asetusten hallinta
+- Analytiikkanäkymät
+
+### Laajennuspisteet
+- Uusien työkalujen integrointi
+- Mukautettujen mallien tuki
+- Tietovarastojen lisääminen
+- Analyysimoodulien laajentaminen
+- Uusien käyttöliittymien kehitys
+
+## Tiedostojen indeksointi
+
+AgentFormerin RAG-ominaisuudet etsivät tiedostoja hakemistosta:
 ```
-Current message: 150 tokens used (50 in, 100 out)
-Cost: $0.0045
-
-Session total: 1500 tokens ($0.0450)
-Per model:
-- gpt-4o-mini: 800 tokens ($0.0120)
-- o1-mini: 700 tokens ($0.0330)
+agentformer/storage/memory/saved_files
 ```
+Kun haluat indeksoida tiedostoja ja nähdä ne RAGToolin kautta:
+1. Aseta tiedostot suoraan yllä mainittuun hakemistoon, TAI
+2. Lähetä tiedostot /upload-rajapinnalla, joka tallentaa ne samaan hakemistoon.
 
-### Työkalukohtaiset optimoinnit
+Tämän jälkeen kutsu /reindex (tai vastaavaa "check_and_reindex_files") -päätepistettä.  
+Onnistuneen indeksoinnin jälkeen:
+• Metatiedot tallentuvat DocumentStoreen.  
+• Vektoriedustukset tallentuvat VectorStoreen.  
+• list_saved_files()-metodi palauttaa indeksoitujen tiedostojen nimet.  
 
-Työkalut voivat määritellä omat malliasetuksensa tehtäväkohtaisesti:
+Jos reindeksointi ei löydä tiedostoja tai list_saved_files() on tyhjä, varmista siis että tiedostot ovat oikeassa hakemistossa ja RAGTool:in check_and_reindex_files on kutsuttu. 
 
-```python
-# RAG-työkalu käyttää tarkkaa mallia hakuun
-"rag_retrieval": "o1-mini"  # Tarkka haku
-"rag_generation": "gpt-4o"  # Hyvä vastausten muodostus
+## Viestintäarkkitehtuuri
 
-# Koodityökalu käyttää kehittynyttä mallia
-"code_generation": "gpt-4o"  # Tarkka koodin tuotto
-```
+#### MessageBus (Singleton + Pub/Sub)
+- Keskitetty viestintäjärjestelmä komponenttien välillä
+- Singleton-malli varmistaa yhden instanssin
+- Pub/Sub mahdollistaa löyhän kytkennän
+- Tukee tapahtumapohjaista kommunikointia
 
-Asetukset optimoivat:
-- Lämpötilan (temperature)
-- Maksimi token-määrän
-- Mallin valinnan tehtävän mukaan
+#### RAG-prosessi yksityiskohtaisesti
+1. **Dokumentin käsittely**
+   - Chunkkaus: Dokumentti pilkotaan sopivan kokoisiksi palasiksi (chunker.py)
+   - Embeddings: Tekstipalat muunnetaan vektoreiksi (SBERT-malli)
+   - Indeksointi: Vektorit tallennetaan FAISS-indeksiin
 
-### RAG-toteutus
+2. **Hakuprosessi**
+   - Kyselyn vektorointi
+   - Semanttinen haku FAISS:lla
+   - Kontekstin muodostus
+   - LLM-vastauksen generointi
 
-AgentFormer käyttää kahta erillistä mallia RAG-toiminnallisuudessa:
+3. **Muistinhallinta**
+   - Lyhytkestoinen: Aktiivinen keskustelu
+   - Pitkäkestoinen: Indeksoidut dokumentit
+   - Automaattinen siivous ja optimointi
 
-1. **SBERT (Sentence-BERT)**
-   - Malli: paraphrase-multilingual-mpnet-base-v2
-   - Käyttötarkoitus: Dokumenttien ja kyselyjen muuntaminen vektorimuotoon
-   - Tukee suomea ja muita kieliä
-   - Vektorin dimensio: 768
+### Järjestelmän laajentaminen
+1. **Uusien työkalujen luominen**
+   - Periytetään BaseToolista
+   - Toteutetaan vaaditut metodit
+   - Rekisteröidään orchestrator.py:ssä
 
-2. **OpenAI Ada**
-   - Malli: text-ada-002
-   - Käyttötarkoitus: Vastausten generointi löydetyn kontekstin perusteella
-   - Hyvä suomen kielen tuki
-   - Optimoitu temperature: 0.3
-
-RAG-prosessi toimii seuraavasti:
-1. Dokumentti chunkataan sopivan kokoisiin osiin (500 tokenia, 50 tokenin overlap)
-2. SBERT luo embeddingin jokaiselle chunkille
-3. FAISS indeksoi embeddingin tehokasta hakua varten
-4. Kyselyn saapuessa SBERT luo embedding kyselylle
-5. FAISS hakee relevanteimmat chunkit
-6. Ada generoi vastauksen löydetyn kontekstin perusteella
-
-## FAISS
-- Yhden sivun keskimääräinen koko: 436,783 / 130 ≈ 3,360 merkkiä
-- Chunkkeja per sivu: 2,376 / 130 ≈ 18.3 chunkkia
-- Muistinkäyttö per sivu:
-    - Embeddings: 18.3 3 KB ≈ 55 KB
-    - Metadata: 18.3 0.5 KB ≈ 9 KB
-    - Yhteensä: ~64 KB per sivu
-
-FAISS käyttää Facebook AI:n kehittämää tehokasta indeksointia, joka pystyy käsittelemään miljoonia vektoreita. Käytännön rajoitukset tulevat lähinnä käytettävissä olevasta RAM-muistista.
-
-Olettaen 8 GB RAM-muistia FAISS-indeksille:
-- 8 GB = 8,000,000 KB
-- 8,000,000 KB / 64 KB ≈ 125,000 sivua
-
-Eli nykyisellä toteutuksella FAISS pystyisi teoriassa käsittelemään noin 125,000 sivua tekstiä. 
-Käytännössä suosittelen pitämään määrän alle 50,000 sivun parempaa suorituskykyä varten.
-
-
-
-## Tyyliopas
-
-### Värit
-- Aktiivisten elementtien väri: RGB 252/163/17 (#FCA311)
-
-### Fontit
-
-#### Ensisijaiset fontit
-1. Otsikot: Gotham Narrow
-   - Book
-   - Medium
-   - Bold
-   - Light (vain poikkeustapauksiin)
-   - Black (vain datan visualisointiin)
-
-2. Leipäteksti: Georgia Regular
-
-#### Korvaavat fontit (kun ensisijaiset eivät käytettävissä)
-- Otsikot: Arial
-- Leipäteksti: Georgia
+2. **Backend-integraatiot**
+   - Toteutetaan BaseBackend-rajapinta
+   - Lisätään konfiguraatio
+   - Rekisteröidään memory_manager.py:ssä
 
 
 

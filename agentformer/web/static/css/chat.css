@@ -1,0 +1,93 @@
+.empty-message {
+    color: #666;
+    font-style: italic;
+    padding: 1rem;
+    text-align: center;
+    border: 1px dashed #ccc;
+    border-radius: 4px;
+    margin: 1rem 0;
+}
+
+.error-message {
+    color: #721c24;
+    background-color: #f8d7da;
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+}
+
+.file-item {
+    padding: 0.5rem;
+    border-bottom: 1px solid #eee;
+}
+
+.file-item:last-child {
+    border-bottom: none;
+}
+
+/* Viestityylit */
+.message {
+    margin: 1rem 0;
+    padding: 0.5rem;
+}
+
+/* Käyttäjän viesti */
+.user-message {
+    position: relative;
+    padding-top: 1.5rem;  /* Tilaa labelille */
+}
+
+.user-message .label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-size: 0.8rem;
+    color: #666;
+    font-weight: 500;
+}
+
+.user-message .content {
+    background-color: #f5f5f5;
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+/* Orkestraattorin viesti */
+.orchestrator-message {
+    position: relative;
+    padding-top: 1.5rem;
+    margin: 1rem 0;
+}
+
+.orchestrator-message .label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-size: 0.8rem;
+    color: #2196F3;
+    font-weight: 500;
+}
+
+.orchestrator-message .content {
+    color: #1976D2;
+    font-style: italic;
+}
+
+/* Työkalun vastaus */
+.tool-message {
+    position: relative;
+    padding-top: 1.5rem;
+}
+
+.tool-message .label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-size: 0.8rem;
+    color: #4CAF50;
+    font-weight: 500;
+}
+
+.tool-message .content {
+    line-height: 1.5;
+}

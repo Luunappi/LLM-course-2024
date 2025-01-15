@@ -1,0 +1,141 @@
+[
+ {
+    "command": "EMBEDDING",
+    "anchor": "mediarag",
+    "file": "mediarag.json",
+    "state": "init",
+    "setstate":"init2"
+  },
+  {
+    "command": "HTML",
+    "state": "init2",
+    "html": "<div style='font-family: Arial, sans-serif; margin: 20px; padding: 20px; border: 2px solid #4B9CD3; border-radius: 8px; background-color: #F5F9FD;'>\n  <h1 style='color: #2F5D8A; margin-top: 0;'>University of Helsinki: Media Release Decision Tool</h1>\n  <p>This tool assists researchers in deciding whether to pursue a media release or alternative channels for disseminating their research. Please provide the requested details to begin.</p>\n</div>"
+  },
+  {
+    "command": "INPUT",
+    "event": "research_focus",
+    "anchor": "research_focus_details",
+    "state": "init2",
+    "text": "Please describe the primary focus of your research, including the goal and key findings."
+  },
+  {
+    "command": "INPUT",
+    "event": "significance",
+    "anchor": "significance_details",
+    "state": "init2",
+    "text": "Explain the significance of your research findings. Why are they important, and what practical applications do they have?"
+  },
+  {
+    "command": "INPUT",
+    "event": "relevance",
+    "anchor": "relevance_details",
+    "state": "init2",
+    "text": "Describe how these findings are relevant at this moment (timely issues, social impact, ongoing discussion, etc.)."
+  },
+  {
+    "command": "HTML",
+    "state": "init2",
+    "html": "<div style='font-family: Arial, sans-serif; margin: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 8px; background-color: #FFFFFF;'>\n  <h2 style='color: #3E3E3E; margin-top: 0;'>Researcher’s Checklist for Media Releases</h2>\n  <ul style='line-height: 1.6;'>\n    <li><strong>Research Focus</strong>: Goal and key findings</li>\n    <li><strong>Significance</strong>: Importance and practical applications</li>\n    <li><strong>Relevance</strong>: Timeliness or current interest</li>\n    <li><strong>Clarity</strong>: Accessible to non-academic audiences</li>\n  </ul>\n  <hr style='border: 0; border-top: 1px solid #ccc;'>\n  <p>Next, click <strong>Analyze Suitability</strong> to check if a media release is appropriate.</p>\n</div>"
+  },
+  {
+    "command": "BUTTON",
+    "state": "init2",
+    "prompt": "Analyze the research using the following guidance:\n\n1. NO release if:\n   - Opinion or personal statements\n   - External event not organized by U. Helsinki\n   - Third-party research or awards\n   - Internal communication only\n\n2. Release is suitable ONLY IF it meets ALL:\n   1) Audience Interest\n   2) Exclusivity (U. Helsinki first to introduce)\n   3) International Relevance\n   4) Timeliness & Impact\n\nIf it’s not suitable, suggest an alternative strategy.\n\nProvided Details:\n- Research Focus: {research_focus_details}\n- Significance: {significance_details}\n- Relevance: {relevance_details}\n",
+    "text": "Analyze Suitability",
+    "anchor": "media_release_analysis",
+    "scope": "research_focus_details significance_details relevance_details",
+    "setstate": "analysis_state"
+  },
+  {
+    "command": "HTML",
+    "scope": "media_release_analysis",
+    "state": "analysis_state",
+    "html": "<div style='font-family: Arial, sans-serif; margin: 20px; padding: 20px; border: 2px dashed #4B9CD3; border-radius: 8px; background-color: #F0F8FF;'>\n  <h2 style='color: #2F5D8A; margin-top: 0;'>Analysis Results</h2>\n  <p>The system’s assessment of your research (including disqualifiers and the four criteria) is shown below:</p>\n  <p><strong>Analysis:</strong> {media_release_analysis}</p>\n  <p>Continue to see if a media release is suitable or if alternatives are recommended.</p>\n</div>"
+  },
+  {
+    "command": "CONDITION",
+    "prompt": "Does the analysis: {media_release_analysis}. Is the media release suitable (meets all 4 criteria and has no disqualifiers)?  Analyze the research using the following guidance:\n\n1. NO release if:\n   - Opinion or personal statements\n   - External event not organized by U. Helsinki\n   - Third-party research or awards\n   - Internal communication only\n\n2. Release is suitable ONLY IF it meets ALL:\n   1) Audience Interest\n   2) Exclusivity (U. Helsinki first to introduce)\n   3) International Relevance\n   4) Timeliness and Impact\n\nIf it’s not suitable, suggest an alternative strategy. 
+    Pay attention to the researcher provided responses. ",
+    "scope": "media_release_analysis",
+    "anchor": "release_decision",
+    "state": "analysis_state",
+    "setstate": "decision_state",
+    "setstate-failure": "alternative_state"
+  },
+  {
+    "command": "HTML",
+    "html": "<div style='font-family: Arial, sans-serif; margin: 20px; padding: 20px; border: 1px solid #0D751A; border-radius: 8px; background-color: #E9F9EE;'>\n  <h3 style='color: #0D751A; margin-top: 0;'>Congratulations!</h3>\n  <p>Your research qualifies for a media release. It meets all required criteria:\n  <ul>\n    <li>Audience Interest</li>\n    <li>Exclusivity</li>\n    <li>International Impact</li>\n    <li>Timeliness & Impact</li>\n  </ul>\n  Next, let’s <strong>draft</strong> a media release.</p>\n</div>",
+    "state": "decision_state"
+  },
+  {
+    "command": "BUTTON",
+    "prompt": "Draft a media release based on:\n- Research Focus: {research_focus_details}\n- Significance: {significance_details}\n- Relevance: {relevance_details}\n\nEnsure clarity for non-academic readers and a compelling headline and summary. Refer to the 'Researcher’s Checklist' to confirm each point is addressed.  Here are the closest prior examples to give an idea of the end result: {mediarag}",
+    "rag":"{research_focus_details}",
+    "text": "Generate Media Release Draft",
+    "anchor": "media_release_draft",
+    "scope": "research_focus_details significance_details relevance_details mediarag",
+    "state": "decision_state",
+    "setstate": "draft_state"
+  },
+  {
+    "command": "HTML",
+    "scope": "media_release_draft",
+    "state": "draft_state",
+    "html": "<div style='font-family: Arial, sans-serif; margin: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px;'>\n  <h3 style='color: #444; margin-top: 0;'>Your Media Release Draft</h3>\n  <p>{media_release_draft}</p>\n  <p>Please review it carefully. Make sure it addresses:\n    <ul>\n      <li>Research focus</li>\n      <li>Significance (why it matters)</li>\n      <li>Relevance (why now)</li>\n      <li>Clarity (non-specialist audience)</li>\n    </ul>\n  </p>\n</div>"
+  },
+  {
+    "command": "BUTTON",
+    "prompt": "Provide detailed feedback on the draft:\n{media_release_draft}\n\nFocus on clarity, significance, audience interest, and additional improvements. Then finalize if all is well.",
+    "text": "Get Feedback on Media Release Draft",
+    "anchor": "media_release_feedback",
+    "scope": "media_release_draft",
+    "state": "draft_state",
+    "setstate": "media_release_final"
+  },
+  {
+    "command": "HTML",
+    "scope": "media_release_feedback",
+    "state": "media_release_final",
+    "html": "<div style='font-family: Arial, sans-serif; margin: 20px; padding: 20px; border: 2px solid #FFD700; border-radius: 8px; background-color: #FFF9E5;'>\n  <h3 style='color: #8B8000; margin-top: 0;'>Draft Feedback</h3>\n  <p>{media_release_feedback}</p>\n  <p>Use these suggestions to finalize your media release.</p>\n</div>"
+  },
+  {
+    "command": "BUTTON",
+    "state": "media_release_final",
+    "prompt": "",
+    "text": "Start Over",
+    "anchor": "",
+    "scope": "",
+    "setstate": "init2"
+  },
+  {
+    "command": "HTML",
+    "text": "",
+    "html": "<div style='font-family: Arial, sans-serif; margin: 20px; padding: 20px; border: 2px solid #CD5C5C; border-radius: 8px; background-color: #FFECEB;'>\n  <h3 style='color: #CD5C5C; margin-top: 0;'>No Media Release Suitable</h3>\n  <p>Your topic <strong>did not</strong> meet all the criteria or was disqualified. Possible reasons include:\n    <ul>\n      <li>Opinion piece / personal statement</li>\n      <li>External event not by U. Helsinki</li>\n      <li>Third-party research or awards</li>\n      <li>Internal communication only</li>\n      <li>One or more of the four required criteria (interest, exclusivity, impact, timeliness) not met</li>\n    </ul>\n  </p>\n  <p><strong>Details from analysis:</strong> {release_decision}</p>\n</div>",
+    "scope": "release_decision",
+    "state": "alternative_state"
+  },
+  {
+    "command": "BUTTON",
+    "prompt": "Suggest the best alternative dissemination. Options:\n• Direct Media Tips\n• University Website News\n• Unit or Group Websites\n• Flamma News\n• Social Media Posts\n• Yliopisto Magazine Articles\n\nResearch Focus: {research_focus_details}\nSignificance: {significance_details}\nRelevance: {relevance_details}",
+    "text": "Suggest Alternative Strategy",
+    "anchor": "alternative_strategies",
+    "scope": "research_focus_details significance_details relevance_details",
+    "state": "alternative_state",
+    "setstate": "alternative_final"
+  },
+  {
+    "command": "HTML",
+    "scope": "alternative_strategies",
+    "state": "alternative_final",
+    "html": "<div style='font-family: Arial, sans-serif; margin: 20px; padding: 20px; border: 2px dashed #CD5C5C; border-radius: 8px; background-color: #FFF4F3;'>\n  <h3 style='color: #CD5C5C; margin-top: 0;'>Recommended Alternative Dissemination Strategies</h3>\n  <p>{alternative_strategies}</p>\n  <p>Consider these options for effectively sharing your research.</p>\n</div>"
+  },
+  {
+    "command": "BUTTON",
+    "state": "alternative_final",
+    "prompt": "",
+    "text": "Start Over",
+    "anchor": "",
+    "scope": "",
+    "setstate": "init2"
+  }
+]

@@ -1,0 +1,22 @@
+[
+    {
+    "command": "SELECTOR",
+    "state": "init",
+    "text": "Please select an item from the list:",
+    "items": [
+      { "id": "doc1", "text": "First document", "state":"doc1"},
+      { "id": "doc2", "text": "Second document", "state":"doc2"} 
+    ],
+    "anchor": "list-selection"
+  },
+  {
+    "command": "TEXT",
+    "text": "Doc1 was chosen.",
+    "state": "doc1"
+  },
+  {
+    "command": "TEXT",
+    "text": "Doc2 was chosen.",
+    "state": "doc2"
+  }
+]

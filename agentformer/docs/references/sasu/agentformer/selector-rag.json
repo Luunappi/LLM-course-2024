@@ -1,0 +1,60 @@
+[
+{
+    "command": "EMBEDDING",
+    "anchor": "selectortest",
+    "file": "selectortest.json",
+    "state": "init",
+    "setstate":"init2"
+  },
+  {
+    "command": "TEXT",
+    "text": "Welcome to the AgentFormers library.",
+    "state": "init2"
+  },
+    {
+    "command": "SELECTOR",
+    "state": "init2",
+    "endstate":"run-agent",
+    "rag":"HR help",
+    "topk":4,
+    "scope":"selectortest",
+    "text": "Please select an item from the list:",
+    "anchor": "list-selection"
+  },
+  {
+    "command": "TEXT",
+    "text": "You chose {list-selection}.",
+    "scope":"list-selection",
+    "state": "run-agent"
+  },
+  {
+    "command": "BUTTON",
+    "text": "Load the agent.",
+    "state": "run-agent",
+    "setstate": "run-agent2",
+    "event":"run-agent2"
+},
+{
+    "command": "BUTTON",
+    "text": "Execute the agent.",
+    "state": "run-agent",
+    "setstate": "run-agent3",
+    "event":"run-agent3"
+},
+{
+    "command": "LOAD", 
+    "scope":"list-selection",
+    "file":"{list-selection}", 
+    "state":"run-agent2"
+  },
+  {
+    "command": "AGENTRUN", 
+    "scope":"list-selection release_decision alternative_strategies",
+    "agentscope":"{release_decision} {alternative_strategies}",
+    "prompt":"run this",
+    "file":"{list-selection}", 
+    "state":"run-agent3",
+    "exit":"media_release_final alternative_final",
+    "anchor":"agentresponse"
+  }
+]

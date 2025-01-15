@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AgentFormers</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0; 
+      padding: 0;
+      background-color: #f2f2f2;
+    }
+    .container {
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background-color: #fff;
+    }
+    .instruction {
+      margin-bottom: 20px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background-color: #fafafa;
+    }
+    .result-container {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background-color: #f9f9f9;
+    }
+    .input-textbox {
+      width: 400px;       /* Make the textbox larger */
+      padding: 8px;
+      margin-right: 10px;
+      font-size: 14px;
+    }
+    button {
+      margin-top: 10px;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      background-color: #007bff;
+      color: #fff;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    /* Loading overlay */
+    #spinner {
+      display: none;              /* Hidden by default */
+      position: fixed;
+      top: 50%; 
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 1.2em;
+      background-color: rgba(255, 255, 255, 0.85);
+      padding: 20px;
+      border: 2px solid #ccc;
+      border-radius: 10px;
+      color: #333;
+      z-index: 9999;             /* Ensure it stays on top */
+    }
+  </style>
+
+  <script>
+    function showSpinner() {
+      document.getElementById("spinner").style.display = "block";
+    }
+
+    function hideSpinner() {
+      document.getElementById("spinner").style.display = "none";
+    }
+
+    async function submitInput(name) {
+      try {
+        showSpinner();
+        const value = document.getElementById(name).value;
+        const response = await fetch("/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, value })
+        });
+        const data = await response.json();
+
+        updateUI(data.instructions, data.results);
+      } catch (err) {
+        console.error("Error in submitInput:", err);
+      } finally {
+        hideSpinner();
+      }
+    }
+
+    async function executeCommand(command, id) {
+      try {
+        showSpinner();
+        const response = await fetch("/command", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ command, id })
+        });
+        const data = await response.json();
+
+        updateUI(data.instructions, data.results);
+      } catch (err) {
+        console.error("Error in executeCommand:", err);
+      } finally {
+        hideSpinner();
+      }
+    }
+
+    function updateUI(instructions, results) {
+      // Render instructions
+      document.getElementById("instructions").innerHTML = instructions
+        .map(renderInstruction)
+        .join("");
+
+      // Display JSON results nicely in a <pre>
+      document.getElementById("results").textContent = JSON.stringify(results, null, 2);
+    }
+
+    function renderInstruction(inst) {
+      /*
+       * You can optionally add "prefill": "some text" 
+       * or "placeholder": "Enter your content..." 
+       * in your instruction data to customize the textboxes.
+       */
+      if (inst.command.includes("INPUT")) {
+        // Use "prefill" if available or empty string
+        const prefillValue = inst.prefill || "";
+        // Use "placeholder" if available or a default
+        const placeholderValue = inst.placeholder || "Enter your text...";
+        return `
+          <div class="instruction">
+            <label for="${inst.event}">${inst.text}</label><br/>
+            <input type="text" 
+                   id="${inst.event}" 
+                   class="input-textbox"
+                   value="${prefillValue}"
+                   placeholder="${placeholderValue}" />
+            <button onclick="submitInput('${inst.event}')">Submit</button>
+          </div>`;
+      } 
+      else if (inst.command.includes("BUTTON")) {
+        return `
+          <div class="instruction">
+            <button onclick="executeCommand('${inst.command}', '${inst.id}')">
+              ${inst.text}
+            </button>
+          </div>`;
+      } 
+      else if (inst.command.includes("TEXT")) {
+        return `
+          <div class="instruction">
+            ${inst.text_ui}
+          </div>`;
+      } 
+      else if (inst.command.includes("HTML")) {
+        return `
+          <div class="instruction">
+            ${inst.html_ui}
+          </div>`;
+      }
+      // If not recognized, return an empty string or some fallback
+      return "";
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      // instructions variable passed from Flask is available globally
+      const instructions = {{ instructions|tojson }};
+      updateUI(instructions, {});  // Initially no results, so pass {}
+    });
+  </script>
+</head>
+<body>
+  <!-- Loading spinner overlay -->
+  <div id="spinner">Loading...</div>
+
+  <div class="container">
+    <h1>AgentFormers</h1>
+    <!-- Instruction area -->
+    <div id="instructions"></div>
+    
+    <!-- Results area -->
+    <div class="result-container">
+      <h3>Results</h3>
+      <pre id="results"></pre>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Data Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/data_window.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h2>Indeksoidut tiedostot</h2>
+        
+        <!-- Viestialue -->
+        <div id="message-container">
+            <div id="message" class="message"></div>
+        </div>
+        
+        <!-- Edistymispalkki -->
+        <div class="progress-container" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress" style="width: 0%"></div>
+            </div>
+            <div class="progress-text">0%</div>
+            <button id="cancel-indexing" class="cancel-button">Keskeytä</button>
+        </div>
+        
+        <!-- Tiedostolista -->
+        <div class="file-list">
+            <ul id="indexed-files">
+                <!-- Tiedostot lisätään tähän dynaamisesti -->
+            </ul>
+        </div>
+        
+        <!-- Toimintonapit -->
+        <div class="button-container">
+            <button id="reindex-button" class="action-button">Reindex All</button>
+            <button id="update-index-button" class="action-button">Update Index</button>
+        </div>
+        
+        <!-- Tiedoston lataus -->
+        <div class="upload-section">
+            <h3>Lataa uusi tiedosto</h3>
+            <form id="upload-form">
+                <input type="file" name="file" accept=".txt,.md,.pdf">
+                <button type="submit" class="action-button">Lataa</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Socket.IO client -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        const socket = io();
+    </script>
+    <script src="{{ url_for('static', filename='js/data_window.js') }}"></script>
+</body>
+</html> 

@@ -1,0 +1,119 @@
+[
+ {
+    "command": "EMBEDDING",
+    "anchor": "salaries",
+    "file": "salaries.json",
+    "state": "init",
+    "setstate":"init2"
+  },
+  {
+    "command": "HTML",
+    "html": "<h2>Welcome to the HR Recruitment Assistant</h2><p>This tool will help you identify the position level, estimate the recruitment timeline, and draft a job advertisement for the University of Helsinki. Additionally, it provides guidance on the official process steps to ensure a successful hiring experience.</p>",
+    "state": "init2"
+  },
+  {
+    "command": "INPUT",
+    "event": "position_input",
+    "anchor": "position_anchor",
+    "text": "Please describe the position you are recruiting for (e.g., ‘professor’, ‘assistant/associate professor’, ‘specialist/support staff’). Provide any relevant details that might influence the process (teaching/research staff, short term, etc.). Please indicate your faculty or unit.",
+    "state": "init2",
+    "setstate": "classify_position"
+  },
+  {
+    "command": "CONDITION",
+    "prompt": "If position_anchor includes 'professor' or 'assistant/associate professor or lecturer'? Content: {position_anchor}",
+    "scope": "position_anchor",
+    "anchor": "position_decision",
+    "state": "classify_position",
+    "setstate": "prof_flow",
+    "setstate-failure": "other_flow"
+  },
+  {
+    "command": "HTML",
+    "html": "<h3>Professor or Assistant/Associate Professor</h3><p>Recruitment typically takes about <strong>5–12 months</strong> from the application deadline. Key steps:</p><ol><li>Planning and scheduling with HR</li><li>Creating job advertisement and marketing</li><li>2–4 week application period</li><li>Appraisal, shortlisting, assessor statements</li><li>Interviews and possible site visits</li><li>Selection, decision, and employment contract</li><li>Orientation</li></ol><p>We will help draft a suitable advertisement next.</p>",
+    "state": "prof_flow"
+  },
+   {
+    "command": "BUTTON",
+    "event":"button1",
+    "text":"Proceed",
+    "state": "prof_flow",
+    "setstate": "draft_ads"
+  },
+  {
+    "command": "HTML",
+    "html": "<h3>Teaching/Research Staff (Non-Professor) or Specialist/Support Staff</h3><p>Recruitment typically takes:</p><ul><li><strong>2 months</strong> for other teaching/research staff</li><li><strong>6 weeks</strong> for specialist/support staff</li></ul><p>Key steps:</p><ol><li>Plan the recruitment with HR</li><li>Draft and market the advertisement</li><li>Application period</li><li>Appraisal, shortlisting</li><li>Interviews</li><li>Selection, contract</li><li>Orientation</li></ol><p>Let’s proceed to draft an advertisement.</p>",
+    "state": "other_flow",
+    "setstate": "draft_ads"
+  },
+   {
+    "command": "BUTTON",
+    "event":"button2",
+    "text":"Proceed",
+    "state": "other_flow",
+    "setstate": "draft_ads"
+  },
+  {
+    "command": "LLM-QUERY",
+    "prompt": "Use HTML in your response. Generate an appealing job advertisement. The advertisement should:\n- Reflect the position {position_anchor}\n- Include the University’s commitment to equal and international recruitment\n- Outline main duties, required qualifications, and highlight the approximate timeline\n- Encourage respectful treatment of applicants and mention orientation & support from HR.\nReturn your answer in an <strong>HTML snippet</strong> for direct display. Salary related information: {salaries}. Here is a prior example: The Faculty of Law invites applications for a professorship in sustainability law to be established with endowments for a fixed term of three years as of 1 September 2025, or as agreed. The professor of sustainability law will work in Helsinki, but their duties include the provision of teaching also at the Faculty's Vaasa Unit of Legal Studies. The language of instruction in the position will be Finnish and/or English. The professorship in sustainability law will strengthen research on corporate responsibility regulation, including the regulation of environmental and responsibility reporting, as well as teaching and public engagement in the field. The appointee is expected to focus in their research on corporate social responsibility regulation at the national and international levels, particularly at the EU level. The professorship in sustainability law is part of the strategic goal of the University of Helsinki and the Faculty of Law to be a leader in responsibility and sustainability. The duties of the appointee include carrying out and supervising scholarly research and providing teaching based on it, following developments in research, and participating in public engagement and international cooperation in the field. The professorship in sustainability law will complement the research and teaching of environmental law, contract law and trade law at the Faculty of Law, University of Helsinki, in cooperation with other researchers in these fields. The appointee will also have the opportunity to contribute to teaching at the Helsinki Institute of Sustainability Science (HELSUS). Requirements for the position and assessment of qualifications According to the Regulations of the University of Helsinki, an appointee to a professorship must hold an applicable doctoral degree and have top-level scholarly qualifications, experience in the supervision of scholarly research, the abilities to provide top-level teaching based on research and to supervise theses, and documentation of international cooperation in the appointee’s research field. Furthermore, the position of professor calls for academic leadership skills. Pursuant to the Government Decree on Universities (770/2009), appointees to teaching and research positions at the University must be proficient in the language in which they provide instruction, i.e., Finnish or Swedish. To successfully attend to the duties of the position, the appointee must also have good English skills. While the language of instruction in the position will be Finnish and/or English, the administrative languages of the University of Helsinki are Finnish and Swedish, and students have the right to use these languages in completing their studies. If the appointee is not proficient in Finnish or Swedish, they are expected to obtain a level of language proficiency that enables them to assess completed studies and obtain information on Finnish legislation within two years of assuming the position. The University of Helsinki will offer support for studying Finnish. Further information about language skills and their demonstration can be found on our website. When assessing applicants’ qualifications, attention will be paid to both scholarly and teaching merits. Scholarly qualifications include scholarly publications and other research results of scholarly value, success in obtaining external research funding, scholarly work outside Finland and international elected positions. Teaching qualifications include teaching experience and pedagogical training, the ability to produce learning materials, other teaching merits and, if necessary, a teaching demonstration, as well as participation in doctoral education. Furthermore, account will be taken of the applicant’s leadership and interaction skills, as well as activity in the research community. What we offer: The salary for the position will be based on levels 8–10 (professor) of the job requirement scheme for teaching and research personnel in the salary system of Finnish universities. In addition, the appointee will be paid a salary component based on personal performance. The gross annual salary is €64,000–€96,000. There will be a six-month trial period for the position.. The application must be accompanied by the following documents in PDF format: How to apply: - A curriculum vitae - A list of publications, with the 10 most significant publications clearly marked - A report (max. 3 pages) describing the applicant’s research activities, such as activities in the scholarly community, success in obtaining research funding and international research - A plan (max. 2 pages) on the development of the field and the direction of the applicant’s research - A report (max. 2 pages) on the applicant’s teaching qualifications Further information about academic portfolios is available on our website. All of the above attachments must be in English. Other attachments, including letters of recommendation or certificates, are not required at this point. Applicants are kindly asked to prepare to select up to 10 publications from their list of publications and submit them for assessment through the electronic application system after the application period. Applications must be submitted through the University of Helsinki electronic recruitment system by clicking on the link below. Current employees of the University of Helsinki must submit their applications through SAP Fiori’s Suffeli recruitment portal. The University of Helsinki welcomes applicants from a variety of genders, linguistic and cultural backgrounds, and minorities. Further information about the position can be obtained from Dean Johanna Niemi (Johanna.niemi(at)helsinki.fi). Further information about the recruitment process can be obtained from HR Specialist Rosa Beckmann (hr-oiktdk(at)helsinki.fi). The Faculty of Law at the University of Helsinki is the leading Finnish institute of legal education. Some of the degrees awarded by the Faculty are completed at its bilingual Vaasa Unit of Legal Studies. The Faculty’s mission is to train qualified, ethically responsible legal professionals for both the Finnish and international markets through research of an international standard and research-based teaching. The Faculty offers undergraduate degrees in Finnish, Swedish and English as well as a bilingual degree in Swedish and Finnish. The Faculty has a teaching and research staff of around 120 people and 2,400 undergraduate and postgraduate students.",
+    "text": "Generate Advertisement Draft (HTML)",
+    "rag": "{position_anchor}",
+    "topk": 1,
+    "anchor": "draft_advert",
+    "scope": "position_anchor salaries",
+    "state": "draft_ads",
+    "setstate": "review_ad"
+  },
+  {
+    "command": "HTML",
+    "html": "<h3>Draft Advertisement Preview</h3><div>{draft_advert}</div><p>Please review the above advertisement carefully.</p>",
+    "scope": "draft_advert",
+    "state": "review_ad"
+  },
+    {
+    "command": "INPUT",
+    "event": "ad_feedback",
+    "anchor": "user_feedback",
+    "text": "Does the draft look good? you can answer yes or provide comments for improvement",
+    "state": "review_ad",
+    "setstate":"review_ad2"
+  },
+
+  {
+    "command": "CONDITION",
+    "prompt": "If user is satisfied with the advertisement draft? User feedback: {user_feedback}. Typically if there is something other than empty or yes, the user wants to do changes. Respond FAIL if there is any change necessary. ",
+    "scope": "user_feedback",
+    "anchor": "ad_satisfaction",
+    "state": "review_ad2",
+    "setstate": "end_flow",
+    "setstate-failure": "revise_ads"
+  },
+  {
+    "command": "LLM-QUERY",
+    "prompt": "The user wants to revise the HTML advertisement. Using the HTML snippet in {draft_advert}, expand the duties, clarify the support from HR, and highlight the next steps in the official process. Return revised HTML in a <strong>more detailed snippet</strong>.",
+    "text": "Revise Advertisement Draft",
+    "anchor": "draft_advert",
+    "replace": "True",
+    "scope": "draft_advert",
+    "state": "revise_ads",
+    "setstate": "end_flow"
+  },
+
+  {
+    "command": "HTML",
+    "html": "<h2>Next Steps in the Official Recruitment Process</h2><p><strong>1) Finalize Your Advertisement:</strong> Work with HR to post it in the appropriate channels (internal, external, international as needed).</p><p><strong>2) Set the Application Period:</strong> Typically 2–4 weeks, or longer for professorial positions. Communicate timelines clearly to applicants.</p><p><strong>3) Appraisal & Shortlisting:</strong> Evaluate all applications, consult assessor statements if applicable, and create a shortlist.</p><p><strong>4) Interviews & Possible Site Visits:</strong> Conduct interviews (video or in-person). For teaching positions, arrange teaching demonstrations. Ensure respectful candidate experience.</p><p><strong>5) Selection & Contract:</strong> Make the final decision, agree on a start date, and sign the employment contract with the chosen candidate.</p><p><strong>6) Orientation:</strong> Provide a thorough orientation plan so the new hire quickly integrates into the University community.</p><p>If you have any questions, contact your HR staff to ensure the recruitment runs smoothly and in compliance with the University’s values and guidelines.</p>",
+    "scope": "draft_advert",
+    "state": "end_flow"
+  },
+  {
+    "command": "HTML",
+    "html": "{draft_advert}",
+    "scope": "draft_advert",
+    "state": "end_flow"
+  },
+  {
+    "command": "TEXT",
+    "text": "Thank you for using the HR Recruitment Assistant! Wishing you success in your hiring process.",
+    "state": "end_flow"
+  }
+]
